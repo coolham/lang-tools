@@ -185,5 +185,6 @@ output/
 
 # 
 conf/config.yaml
+.env
 
 
