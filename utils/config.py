@@ -7,27 +7,58 @@ class ConfigManager:
     def __init__(self):
         # 加载.env文件
         load_dotenv()
+        self.config = {
+            "openai": {
+                "api_key": "",
+                "base_url": "https://api.openai.com",
+                "model": "gpt-3.5-turbo"
+            },
+            "grok": {
+                "api_key": "",
+                "base_url": "https://api.grok.ai",
+                "model": "grok-1"
+            }
+        }
 
     def get_openai_api_key(self) -> str:
         """获取OpenAI API密钥"""
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            raise ValueError("未找到OPENAI_API_KEY环境变量")
-        return api_key
+        return self.config["openai"]["api_key"]
 
     def get_openai_model(self) -> str:
         """获取OpenAI模型名称"""
-        model = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
-        return model
+        return self.config["openai"]["model"]
 
     def get_openai_base_url(self) -> str:
         """获取OpenAI基础URL"""
-        base_url = os.getenv('OPENAI_BASE_URL')
-        if not base_url:
-            raise ValueError("未找到OPENAI_BASE_URL环境变量")
-        # 确保base_url以/结尾
-        return base_url.rstrip('/') + '/'
+        return self.config["openai"]["base_url"]
 
     def get_chat_completions_url(self) -> str:
         """获取聊天完成API的完整URL"""
-        return f"{self.get_openai_base_url()}chat/completions" 
+        return f"{self.get_openai_base_url()}chat/completions"
+
+    def get_grok_api_key(self) -> str:
+        return self.config["grok"]["api_key"]
+
+    def get_grok_base_url(self) -> str:
+        return self.config["grok"]["base_url"]
+
+    def get_grok_model(self) -> str:
+        return self.config["grok"]["model"]
+
+    def set_openai_api_key(self, api_key: str):
+        self.config["openai"]["api_key"] = api_key
+
+    def set_openai_base_url(self, base_url: str):
+        self.config["openai"]["base_url"] = base_url
+
+    def set_openai_model(self, model: str):
+        self.config["openai"]["model"] = model
+
+    def set_grok_api_key(self, api_key: str):
+        self.config["grok"]["api_key"] = api_key
+
+    def set_grok_base_url(self, base_url: str):
+        self.config["grok"]["base_url"] = base_url
+
+    def set_grok_model(self, model: str):
+        self.config["grok"]["model"] = model 

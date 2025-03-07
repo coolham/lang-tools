@@ -1,11 +1,14 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
                             QLineEdit, QPushButton, QLabel, QStatusBar,
-                            QFileDialog, QScrollArea, QFrame)
+                            QFileDialog, QScrollArea, QFrame, QComboBox,
+                            QDialog, QMessageBox)
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QPixmap, QImage
 from utils.logger import Logger
+from utils.version import version_info
 from services.models import Message, ChatHistory
 from services.openai_service import OpenAIService
+from services.grok_service import GrokService
 import os
 import base64
 from PIL import Image
@@ -59,14 +62,38 @@ class ChatForm(QWidget):
         super().__init__()
         self.logger = Logger.create_logger('chat')
         self.chat_history = ChatHistory()
-        self.ai_service = OpenAIService()  # 使用OpenAI SDK实现
         self.attached_files = []  # 存储已上传的文件路径
+        
+        # 初始化AI服务
+        self.ai_services = {
+            "OpenAI": OpenAIService(),
+            "Grok": GrokService()
+        }
+        self.current_service = "OpenAI"  # 默认使用OpenAI
+        
         self.init_ui()
+        self.load_models()
 
     def init_ui(self):
         """初始化UI布局"""
         self.setWindowTitle('AI对话')
         layout = QVBoxLayout()
+
+        # 模型选择区域
+        model_layout = QHBoxLayout()
+        model_label = QLabel("AI模型:")
+        self.model_combo = QComboBox()
+        self.model_combo.currentTextChanged.connect(self.on_model_changed)
+        model_layout.addWidget(model_label)
+        model_layout.addWidget(self.model_combo)
+        model_layout.addStretch()
+        
+        # 添加关于按钮
+        about_button = QPushButton("关于")
+        about_button.clicked.connect(self.show_about_dialog)
+        model_layout.addWidget(about_button)
+        
+        layout.addLayout(model_layout)
 
         # 对话历史显示区域
         self.history_display = QTextEdit()
@@ -119,6 +146,37 @@ class ChatForm(QWidget):
         layout.addWidget(self.status_bar)
 
         self.setLayout(layout)
+
+    def load_models(self):
+        """加载可用的AI模型"""
+        try:
+            self.status_bar.showMessage("正在加载模型列表...")
+            # 获取当前服务的可用模型
+            models = self.ai_services[self.current_service].get_models()
+            
+            # 更新下拉框
+            self.model_combo.clear()
+            self.model_combo.addItems(models)
+            
+            # 设置默认模型
+            if models:
+                self.model_combo.setCurrentText(models[0])
+            
+            self.status_bar.showMessage("就绪")
+        except Exception as e:
+            self.logger.error(f"加载模型列表失败: {str(e)}")
+            self.status_bar.showMessage(f"加载模型失败: {str(e)}")
+
+    def on_model_changed(self, model_name: str):
+        """处理模型选择变化"""
+        try:
+            self.status_bar.showMessage(f"正在切换到模型: {model_name}")
+            # 更新当前服务使用的模型
+            self.ai_services[self.current_service].model = model_name
+            self.status_bar.showMessage("就绪")
+        except Exception as e:
+            self.logger.error(f"切换模型失败: {str(e)}")
+            self.status_bar.showMessage(f"切换模型失败: {str(e)}")
 
     def upload_file(self):
         """处理文件上传"""
@@ -191,7 +249,7 @@ class ChatForm(QWidget):
         try:
             # 获取AI回复
             self.status_bar.showMessage("正在获取回复...")
-            ai_message = self.ai_service.send_message(self.chat_history.get_messages())
+            ai_message = self.ai_services[self.current_service].send_message(self.chat_history.get_messages())
             self.chat_history.add_message(ai_message)
             self.update_display()
             self.status_bar.showMessage("就绪")
@@ -227,4 +285,23 @@ class ChatForm(QWidget):
         self.history_display.verticalScrollBar().setValue(
             self.history_display.verticalScrollBar().maximum()
         )
+
+    def show_about_dialog(self):
+        """显示关于对话框"""
+        about_text = f"""
+        <h2>AI对话工具</h2>
+        <p>版本: {version_info.version}</p>
+        <p>发布日期: {version_info.release_date}</p>
+        <p>作者: {version_info.author}</p>
+        <p>邮箱: {version_info.email}</p>
+        <p>许可证: {version_info.license}</p>
+        
+        <h3>更新说明</h3>
+        <pre>{version_info.changelog}</pre>
+        
+        <h3>依赖要求</h3>
+        <pre>{version_info.requirements}</pre>
+        """
+        
+        QMessageBox.about(self, "关于", about_text)
         
