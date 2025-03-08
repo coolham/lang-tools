@@ -50,8 +50,8 @@ class MainWindow(QMainWindow):
         tabs = QTabWidget()
         
         # Markdown标签页
-        markdown_tab = MarkdownForm()
-        tabs.addTab(markdown_tab, "Markdown")
+        # markdown_tab = MarkdownForm()
+        # tabs.addTab(markdown_tab, "Markdown")
 
         # Chat标签页
         chat_tab = ChatForm()

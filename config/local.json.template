@@ -1,0 +1,52 @@
+{
+    "ai_services": {
+        "openai": {
+            "providers": {
+                "official": {
+                    "api_key": "your-openai-api-key-here",
+                    "organization_id": "your-org-id-here"
+                },
+                "openrouter": {
+                    "api_key": "your-openrouter-api-key-here"
+                },
+                "azure": {
+                    "api_key": "your-azure-api-key-here",
+                    "base_url": "https://your-resource-name.openai.azure.com",
+                    "deployment_ids": {
+                        "gpt-35-turbo": "your-gpt-35-deployment-id",
+                        "gpt-4": "your-gpt-4-deployment-id"
+                    }
+                }
+            }
+        },
+        "deepseek": {
+            "providers": {
+                "official": {
+                    "api_key": "your-deepseek-api-key-here"
+                },
+                "zhipu": {
+                    "api_key": "your-zhipu-api-key-here"
+                },
+                "siliconflow": {
+                    "api_key": "your-siliconflow-api-key-here"
+                }
+            }
+        },
+        "grok": {
+            "api_key": "your-grok-api-key-here"
+        }
+    },
+    "database": {
+        "host": "localhost",
+        "port": 5432,
+        "username": "your-db-username",
+        "password": "your-db-password"
+    },
+    "redis": {
+        "host": "localhost",
+        "port": 6379,
+        "password": "your-redis-password"
+    },
+    "jwt_secret": "your-jwt-secret-here",
+    "other_secrets": {}
+} 

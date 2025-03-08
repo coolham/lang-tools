@@ -2,6 +2,9 @@ import logging
 import os
 from datetime import datetime
 
+"""
+日志记录器类
+"""
 class Logger:
     def __init__(self, name: str, log_file: str = 'app.log', level: int = logging.INFO):
         self.log_dir = 'logs'
@@ -26,8 +29,9 @@ class Logger:
         f_handler.setLevel(level)
 
         # Create formatters and add it to handlers
-        c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-        f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(filename)s:%(lineno)d'
+        c_format = logging.Formatter(log_format)
+        f_format = logging.Formatter(log_format)
         c_handler.setFormatter(c_format)
         f_handler.setFormatter(f_format)
 

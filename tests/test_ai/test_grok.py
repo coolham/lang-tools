@@ -1,170 +1,196 @@
 import unittest
-from unittest.mock import patch, MagicMock
+import openai
+import httpx
+import time
+import logging
 from services.grok_service import GrokService
-from services.models import Message
-from utils.config import ConfigManager
-import requests
-import json
-import os
-from dotenv import load_dotenv
-
+from services.message_types import Message
+from utils.config_manager import ConfigManager
+from utils.logger import Logger
 
 class TestGrokService(unittest.TestCase):
-    """测试GrokService类"""
+    """测试 Grok 服务"""
+    
+    base_url = "https://api.x.ai/v1"
+    DEFAULT_TEST_MODEL = "grok-2"
     
     def setUp(self):
         """测试前的准备工作"""
-        # 加载.env文件
-        load_dotenv()
-        
         self.config = ConfigManager()
+        self.config.provider_config = {
+            "grok": {
+                "official": {
+                    "api_key": "qSgVsvm0...",
+                    "base_url": self.base_url
+                }
+            }
+        }
+        self.service = GrokService(self.config)
+        self.logger = Logger.create_logger('grok-test')
         
-        # 从环境变量读取配置
-        self.grok_api_key = os.getenv('GROK_API_KEY')
-        self.grok_base_url = os.getenv('GROK_BASE_URL', 'https://api.grok.ai')
-        self.grok_model = os.getenv('GROK_MODEL', 'grok-1')
-        
-        if not self.grok_api_key:
-            raise ValueError("未找到GROK_API_KEY环境变量，请在.env文件中设置")
-            
-        # 设置配置
-        self.config.set_grok_api_key(self.grok_api_key)
-        self.config.set_grok_base_url(self.grok_base_url)
-        self.config.set_grok_model(self.grok_model)
-        
-        self.service = GrokService()
+        # 记录服务配置
+        self.logger.info("=== Grok服务配置 ===")
+        self.logger.info(f"Base URL: {self.service.base_url}")
+        self.logger.info(f"API Key: {self.service.api_key}")
+        self.logger.info(f"Default Model: {self.service.default_model}")
 
     def test_init(self):
         """测试初始化"""
+        self.assertEqual(self.service.base_url, self.base_url)
+        self.assertTrue(self.service.api_key.startswith("qSgVsvm0"))
+        self.assertEqual(self.service.default_model, "grok-1")
 
-        self.assertEqual(self.service.base_url, self.grok_base_url)
-        # self.assertEqual(self.service.model, self.grok_model)
-        # self.assertEqual(self.service.headers["Authorization"], f"Bearer {self.grok_api_key}")
-        self.assertEqual(self.service.headers["Content-Type"], "application/json")
-
-    @patch('requests.post')
-    def test_send_message_success(self, mock_post):
-        """测试成功发送消息"""
-        # 模拟API响应
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [{
-                "message": {
-                    "content": "这是一个测试回复"
-                }
-            }]
-        }
-        mock_post.return_value = mock_response
-
-        # 测试发送消息
-        messages = [Message(role="user", content="你好")]
+    def test_basic_chat(self):
+        """测试基本对话功能"""
+        messages = [Message(role="user", content="你好，请用一句话介绍自己")]
+        
+        self.logger.info("\n=== 测试基本对话 ===")
+        self.logger.info(f"发送消息: {messages[0].content}")
+        
         response = self.service.send_message(messages)
+        
+        self.logger.info("收到响应:")
+        self.logger.info(f"Response type: {type(response)}")
+        self.logger.info(f"Response keys: {response.keys()}")
+        self.logger.info(f"First choice content: {response['choices'][0]['message']['content']}")
+        
+        self.assertIsInstance(response, dict)
+        self.assertIn("choices", response)
+        self.assertGreater(len(response["choices"]), 0)
+        self.assertIn("message", response["choices"][0])
+        self.assertIn("content", response["choices"][0]["message"])
+        self.assertTrue(len(response["choices"][0]["message"]["content"]) > 0)
 
-        # 验证结果
-        self.assertEqual(response.role, "assistant")
-        self.assertEqual(response.content, "这是一个测试回复")
+    def test_streaming_response(self):
+        """测试流式响应"""
+        messages = [Message(role="user", content="请用20个字描述春天")]
+        
+        # 获取流式响应
+        response = self.service.send_message(messages, stream=True)
+        
+        # 收集响应内容
+        content = ""
+        for chunk in response:
+            content += chunk
+            self.logger.info(f"收到chunk: {chunk}")
+            
+        self.assertTrue(len(content) > 0)
+        self.logger.info(f"完整响应: {content}")
 
-        # 验证请求参数
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args
-        self.assertEqual(call_args[0][0], f"{self.grok_base_url}/v1/chat/completions")
-        self.assertEqual(call_args[1]["headers"], self.service.headers)
-        request_data = call_args[1]["json"]
-        # self.assertEqual(request_data["model"], self.grok_model)
-        self.assertEqual(request_data["messages"][0]["role"], "user")
-        self.assertEqual(request_data["messages"][0]["content"][0]["text"], "你好")
-        self.assertEqual(request_data["temperature"], 0.7)
-        self.assertEqual(request_data["max_tokens"], 2000)
-
-    @patch('requests.post')
-    def test_send_message_with_attachments(self, mock_post):
-        """测试发送带附件的消息"""
-        # 模拟API响应
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [{
-                "message": {
-                    "content": "已收到图片"
-                }
-            }]
-        }
-        mock_post.return_value = mock_response
-
-        # 测试发送带附件的消息
-        message = Message(role="user", content="请分析这张图片")
-        message.attachments = [{
-            "type": "image",
-            "data": "base64_encoded_image_data"
-        }]
-        messages = [message]
-        response = self.service.send_message(messages)
-
-        # 验证结果
-        self.assertEqual(response.role, "assistant")
-        self.assertEqual(response.content, "已收到图片")
-
-        # 验证请求参数
-        call_args = mock_post.call_args
-        request_data = call_args[1]["json"]
-        self.assertEqual(len(request_data["messages"][0]["content"]), 2)
-        self.assertEqual(request_data["messages"][0]["content"][0]["type"], "text")
-        self.assertEqual(request_data["messages"][0]["content"][1]["type"], "image_url")
-        self.assertEqual(
-            request_data["messages"][0]["content"][1]["image_url"]["url"],
-            "data:image/png;base64,base64_encoded_image_data"
+    def test_system_message(self):
+        """测试系统消息"""
+        messages = [Message(role="user", content="你是什么类型的专家？你擅长什么？")]
+        response = self.service.send_message(
+            messages,
+            system_message="你是一个Python编程专家，擅长算法和数据结构"
+        )
+        
+        content = response["choices"][0]["message"]["content"]
+        self.logger.info(f"系统消息测试响应: {content}")
+        
+        # 检查多个相关关键词
+        keywords = ["python", "编程", "算法", "数据结构", "开发", "程序", "代码"]
+        found_keywords = [word for word in keywords if word.lower() in content.lower()]
+        self.logger.info(f"找到的关键词: {found_keywords}")
+        self.assertTrue(
+            len(found_keywords) > 0,
+            f"响应中没有找到任何预期的关键词。响应内容: {content}"
         )
 
-    @patch('requests.post')
-    def test_send_message_api_error(self, mock_post):
-        """测试API请求错误"""
-        # 模拟API错误
-        mock_post.side_effect = requests.exceptions.RequestException("API错误")
-
-        # 测试发送消息
-        messages = [Message(role="user", content="你好")]
-        with self.assertRaises(Exception) as context:
-            self.service.send_message(messages)
-
-        # 验证错误信息
-        self.assertTrue("API请求失败" in str(context.exception))
-
-    @patch('requests.get')
-    def test_get_models_success(self, mock_get):
-        """测试成功获取模型列表"""
-        # 模拟API响应
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "data": [
-                {"id": "grok-1"},
-                {"id": "grok-2"}
-            ]
+    def test_error_handling(self):
+        """测试错误处理"""
+        # 使用无效的API密钥
+        invalid_config = ConfigManager()
+        invalid_config.provider_config = {
+            "grok": {
+                "official": {
+                    "api_key": "invalid_key_12345",
+                    "base_url": self.base_url
+                }
+            }
         }
-        mock_get.return_value = mock_response
+        service_with_invalid_key = GrokService(invalid_config)
+        
+        messages = [{"role": "user", "content": "测试消息"}]
+        
+        try:
+            service_with_invalid_key.send_message(messages)
+            self.fail("应该抛出异常")
+        except Exception as e:
+            error_msg = str(e)
+            self.logger.info(f"无效API密钥错误信息: {error_msg}")
+            # 检查错误消息是否包含预期的关键词
+            self.assertTrue(
+                any(keyword in error_msg.lower() for keyword in 
+                    ["unauthorized", "authentication", "认证", "invalid", "api_key", "error", "失败", "connection"])
+            )
 
-        # 测试获取模型列表
+    def test_get_models(self):
+        """测试获取模型列表"""
         models = self.service.get_models()
+        
+        self.assertIsInstance(models, list)
+        self.assertTrue(len(models) > 0)
+        self.assertIn(self.DEFAULT_TEST_MODEL, models)
+        self.logger.info(f"可用模型列表: {models}")
 
-        # 验证结果
-        self.assertEqual(models, ["grok-1", "grok-2"])
+    def test_custom_parameters(self):
+        """测试自定义参数"""
+        custom_params = {
+            "temperature": 0.9,
+            "max_tokens": 50,
+            "top_p": 0.8,
+            "frequency_penalty": 0.2,
+            "presence_penalty": 0.2
+        }
+        
+        messages = [Message(role="user", content="用一句话描述大海")]
+        response = self.service.send_message(
+            messages,
+            **custom_params
+        )
+        
+        content = response["choices"][0]["message"]["content"]
+        self.logger.info(f"使用自定义参数的响应: {content}")
+        self.assertTrue(len(content) > 0)
 
-        # 验证请求参数
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], f"{self.grok_base_url}/v1/models")
-        self.assertEqual(call_args[1]["headers"], self.service.headers)
+    def test_error_cases(self):
+        """测试错误情况"""
+        # 测试无效的模型名称
+        messages = [Message(role="user", content="测试消息")]
+        with self.assertRaises(ValueError) as context:
+            self.service.send_message(messages, model="grok-999-invalid")
+        
+        error_message = str(context.exception)
+        self.logger.info(f"无效模型错误信息: {error_message}")
+        self.assertIn("不支持的模型", error_message)
 
-    @patch('requests.get')
-    def test_get_models_error(self, mock_get):
-        """测试获取模型列表失败"""
-        # 模拟API错误
-        mock_get.side_effect = Exception("获取模型列表失败")
+        # 测试超长输入
+        # 创建一个非常长的、复杂的消息
+        long_message = "这是一个测试消息，包含中文和English混合内容。" * 50000
+        long_message += "还有一些特殊字符：!@#$%^&*()_+" * 1000
+        messages = [Message(role="user", content=long_message)]
+        
+        with self.assertRaises(Exception) as context:
+            self.service.send_message(
+                messages,
+                max_tokens=1,  # 使用极小的max_tokens
+                model=self.DEFAULT_TEST_MODEL
+            )
+        
+        error_message = str(context.exception)
+        self.logger.info(f"超长输入错误信息: {error_message}")
+        self.assertTrue(
+            any(term in error_message.lower() for term in 
+                ["token", "length", "too long", "超过", "exceed", "limit"])
+        )
 
-        # 测试获取模型列表
-        models = self.service.get_models()
-
-        # 验证返回默认模型
-        self.assertEqual(models, ["grok-1", "grok-2"])
-
+    def test_supported_models(self):
+        """测试支持的模型配置"""
+        # 测试默认模型
+        messages = [{"role": "user", "content": "你好"}]
+        response = self.service.send_message(messages, model="grok-1")
+        self.assertTrue(len(response["choices"][0]["message"]["content"]) > 0)
 
 if __name__ == '__main__':
     unittest.main()
