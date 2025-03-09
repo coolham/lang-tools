@@ -9,15 +9,30 @@ import os
 
 
 class OpenAIService(AIService):
-    """OpenAI服务实现"""
+    """OpenAI服务实现
     
-    def __init__(self, config_manager: ConfigManager):
+    OpenAI SDK v1.0+ 注意事项:
+    1. SDK返回强类型对象而非字典:
+       - 普通响应返回ChatCompletion对象，可通过属性访问如response.choices[0].message.content
+       - 流式响应返回ChatCompletionChunk对象，内容在chunk.choices[0].delta.content
+    
+    2. 响应处理策略:
+       - 对于普通响应，我们使用model_dump()转为字典以保持向后兼容
+       - 对于流式响应，我们仅返回文本内容而非完整对象
+    
+    3. 错误处理:
+       - SDK抛出专用异常类型如APIConnectionError，而非通用Exception
+       - 应针对不同异常类型实现特定处理逻辑
+    """
+    
+    def __init__(self, config_manager: ConfigManager, provider_name=None):
         """初始化OpenAI服务
 
         Args:
             config_manager: 配置管理器实例
+            provider_name: 指定要使用的提供商名称，若为None则使用默认提供商
         """
-        super().__init__(config_manager)
+        super().__init__(config_manager, provider_name)
         self.logger = Logger.create_logger('openai')
         self.default_model = self.config.get_default_model("openai")
         
@@ -66,6 +81,10 @@ class OpenAIService(AIService):
         Returns:
             如果stream=True，返回一个生成器用于流式处理
             如果stream=False，返回完整的响应字典
+            
+        注意: 
+            OpenAI SDK v1.0+返回强类型对象，而非简单字典。
+            如果需要原始对象而非字典，可修改此方法直接返回completion而不调用model_dump()
         """
         try:
             # 获取模型配置
@@ -118,7 +137,11 @@ class OpenAIService(AIService):
             stream: OpenAI流式响应对象
 
         Yields:
-            每个响应块的内容
+            每个响应块的内容字符串
+            
+        注意:
+            当前实现仅返回文本内容而非完整的ChatCompletionChunk对象
+            如果需要处理完整对象（如处理函数调用等），请修改此方法直接yield chunk
         """
         try:
             for chunk in stream:
@@ -137,4 +160,4 @@ class OpenAIService(AIService):
             self.logger.error(f"获取模型列表失败: {str(e)}")
             # 如果获取失败，返回配置中定义的模型
             config = self.get_model_config()
-            return list(config.get("models", {}).keys()) 
+            return list(config.get("models", {}).keys())

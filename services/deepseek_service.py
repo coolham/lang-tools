@@ -14,9 +14,14 @@ class DeepseekService(AIService):
     支持多个API提供商
     """
     
-    def __init__(self, config_manager: ConfigManager):
-        """初始化Deepseek服务"""
-        super().__init__(config_manager)
+    def __init__(self, config_manager: ConfigManager, provider_name=None):
+        """初始化Deepseek服务
+        
+        Args:
+            config_manager: 配置管理器实例
+            provider_name: 指定要使用的提供商名称，若为None则使用默认提供商
+        """
+        super().__init__(config_manager, provider_name)
         self.logger = Logger.create_logger('deepseek_service')
         
         # 初始化所有支持的提供商
@@ -24,7 +29,7 @@ class DeepseekService(AIService):
         self._init_providers()
         
         # 设置当前使用的提供商和模型
-        self.current_provider = self.config.get_default_provider("deepseek")
+        self.current_provider = self.provider_name
         self.default_model = self.config.get_default_model("deepseek")
         
         if not self.providers:

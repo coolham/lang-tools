@@ -8,10 +8,19 @@ from .message_types import Message
 class AIService(ABC):
     """AI服务基类"""
     
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: ConfigManager, provider_name=None):
+        """初始化AI服务基类
+        
+        Args:
+            config_manager: 配置管理器实例
+            provider_name: 指定要使用的提供商名称，若为None则使用默认提供商
+        """
         self.config = config_manager
         self.service_name = self.__class__.__name__.lower().replace('service', '')
-        self.provider_name = self.config.get_default_provider(self.service_name)
+        # 使用指定的提供商，如果没有指定则使用默认提供商
+        if provider_name is None:
+            provider_name = self.config.get_default_provider(self.service_name)
+        self.provider_name = provider_name
         self.provider_config = self.config.get_provider_config(self.service_name, self.provider_name)
         self.base_url = self.provider_config.get("base_url", "")
         self.api_key = self.provider_config.get("api_key", "")
@@ -94,9 +103,15 @@ class AIService(ABC):
 
 
 class AIServiceImpl(AIService):
-    """AI服务实现类，使用requests库发送网络请求"""
-    def __init__(self):
-        super().__init__("openai")
+    """AI服务实现类"""
+    def __init__(self, provider_name=None):
+        """初始化AI服务实现
+        
+        Args:
+            provider_name: 指定要使用的提供商名称，若为None则使用默认提供商
+        """
+        config_manager = ConfigManager()
+        super().__init__(config_manager, provider_name)
         self.api_key = self.get_api_key()
         self.model = self.default_model
         self.headers = {

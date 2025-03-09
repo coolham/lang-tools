@@ -1,30 +1,20 @@
 import unittest
-import openai
-import httpx
-import time
-import logging
 from services.grok_service import GrokService
 from services.message_types import Message
 from utils.config_manager import ConfigManager
 from utils.logger import Logger
 
+
+
 class TestGrokService(unittest.TestCase):
     """测试 Grok 服务"""
     
-    base_url = "https://api.x.ai/v1"
-    DEFAULT_TEST_MODEL = "grok-2"
+    DEFAULT_TEST_MODEL = "grok-1"
     
     def setUp(self):
         """测试前的准备工作"""
         self.config = ConfigManager()
-        self.config.provider_config = {
-            "grok": {
-                "official": {
-                    "api_key": "qSgVsvm0...",
-                    "base_url": self.base_url
-                }
-            }
-        }
+            
         self.service = GrokService(self.config)
         self.logger = Logger.create_logger('grok-test')
         
@@ -36,9 +26,10 @@ class TestGrokService(unittest.TestCase):
 
     def test_init(self):
         """测试初始化"""
-        self.assertEqual(self.service.base_url, self.base_url)
-        self.assertTrue(self.service.api_key.startswith("qSgVsvm0"))
-        self.assertEqual(self.service.default_model, "grok-1")
+        grok_config = self.config.get_provider_config("grok", "official")
+        self.assertEqual(self.service.base_url, grok_config.get("base_url"))
+        self.assertEqual(self.service.api_key, grok_config.get("api_key"))
+        self.assertEqual(self.service.default_model, self.DEFAULT_TEST_MODEL)
 
     def test_basic_chat(self):
         """测试基本对话功能"""
@@ -79,11 +70,11 @@ class TestGrokService(unittest.TestCase):
 
     def test_system_message(self):
         """测试系统消息"""
-        messages = [Message(role="user", content="你是什么类型的专家？你擅长什么？")]
-        response = self.service.send_message(
-            messages,
-            system_message="你是一个Python编程专家，擅长算法和数据结构"
-        )
+        messages = [
+            Message(role="system", content="你是一个Python编程专家，擅长算法和数据结构"),
+            Message(role="user", content="你是什么类型的专家？你擅长什么？")
+        ]
+        response = self.service.send_message(messages)
         
         content = response["choices"][0]["message"]["content"]
         self.logger.info(f"系统消息测试响应: {content}")
@@ -101,11 +92,20 @@ class TestGrokService(unittest.TestCase):
         """测试错误处理"""
         # 使用无效的API密钥
         invalid_config = ConfigManager()
+        grok_config = self.config.get_provider_config("grok", "official")
         invalid_config.provider_config = {
             "grok": {
-                "official": {
-                    "api_key": "invalid_key_12345",
-                    "base_url": self.base_url
+                "enabled": True,
+                "default_provider": "official",
+                "default_model": self.DEFAULT_TEST_MODEL,
+                "providers": {
+                    "official": {
+                        "name": "Grok Official",
+                        "enabled": True,
+                        "api_key": "invalid_key_12345",
+                        "base_url": grok_config.get("base_url"),
+                        "use_proxy": False
+                    }
                 }
             }
         }
