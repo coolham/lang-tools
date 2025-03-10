@@ -19,7 +19,6 @@ class ConfigManager:
     
     def __init__(self, config_dir: str = None):
         if not self._initialized:
-            self.logger = Logger.create_logger('config')
             self._config_dir = config_dir or os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config')
             self._load_config()
             self._initialized = True
@@ -54,6 +53,21 @@ class ConfigManager:
             raise KeyError(f"Service '{service_name}' not found")
         return service_config.get("default_model")
     
+    def _log_info(self, message: str):
+        if not hasattr(self, 'logger'):
+            self.logger = Logger.create_logger('config')
+        self.logger.info(message)
+
+    def _log_warning(self, message: str):
+        if not hasattr(self, 'logger'):
+            self.logger = Logger.create_logger('config')
+        self.logger.warning(message)
+
+    def _log_error(self, message: str):
+        if not hasattr(self, 'logger'):
+            self.logger = Logger.create_logger('config')
+        self.logger.error(message)
+
     def _load_config(self):
         """加载配置文件"""
         try:
@@ -68,14 +82,13 @@ class ConfigManager:
                         else:
                             # 合并配置
                             self._merge_config(json.load(f))
-                    self.logger.info(f"Configuration loaded from {config_path}")
             
             if not config_loaded:
-                self.logger.warning("No configuration files found, using default settings")
+                self._log_warning("No configuration files found, using default settings")
                 self._create_default_config()
             
         except Exception as e:
-            self.logger.error(f"Failed to load configuration: {str(e)}")
+            self._log_error(f"Failed to load configuration: {str(e)}")
             self._create_default_config()
     
     def _create_default_config(self):
@@ -114,7 +127,7 @@ class ConfigManager:
             default_path = os.path.join(self._config_dir, 'default.json')
             with open(default_path, 'w', encoding='utf-8') as f:
                 json.dump(self._config, f, indent=4, ensure_ascii=False)
-            self.logger.info("Default configuration saved")
+            self._log_info("Default configuration saved")
             
             # 创建本地配置模板
             local_path = os.path.join(self._config_dir, 'local.json')
@@ -133,10 +146,10 @@ class ConfigManager:
                 }
                 with open(local_path, 'w', encoding='utf-8') as f:
                     json.dump(local_config, f, indent=4, ensure_ascii=False)
-                self.logger.info("Local configuration template created")
+                self._log_info("Local configuration template created")
                 
         except Exception as e:
-            self.logger.error(f"Failed to save configuration: {str(e)}")
+            self._log_error(f"Failed to save configuration: {str(e)}")
     
     def _merge_config(self, new_config: Dict[str, Any]):
         """递归合并配置"""

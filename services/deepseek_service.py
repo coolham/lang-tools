@@ -1,5 +1,6 @@
 from typing import List, Dict
-from .models import Message, AIService
+from .message_types import Message
+from .ai_service import AIService
 from .providers.base_provider import BaseProvider
 from .providers.deepseek_provider import DeepseekProvider
 from .providers.zhipu_provider import ZhipuProvider

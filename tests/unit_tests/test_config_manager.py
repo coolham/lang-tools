@@ -33,6 +33,20 @@ class TestConfigManager(unittest.TestCase):
                     },
                     "default_provider": "official",
                     "default_model": "gpt-3.5-turbo"
+                },
+                "grok": {
+                    "enabled": True,
+                    "providers": {
+                        "official": {
+                            "name": "Grok Official",
+                            "enabled": True,
+                            "api_key": "",
+                            "base_url": "https://api.x.ai/v1",
+                            "use_proxy": False
+                        }
+                    },
+                    "default_provider": "official",
+                    "default_model": "grok-2"
                 }
             }
         }
@@ -49,6 +63,17 @@ class TestConfigManager(unittest.TestCase):
                         "official": {
                             "api_key": "test-api-key",
                             "organization_id": "test-org-id"
+                        }
+                    }
+                },
+                "grok": {
+                    "providers": {
+                        "superlang": {
+                            "name": "SuperLang",
+                            "enabled": True,
+                            "api_key": "superlang-api-key",
+                            "base_url": "http://grok.superlang.top/v1",
+                            "use_proxy": False
                         }
                     }
                 }
@@ -149,6 +174,14 @@ class TestConfigManager(unittest.TestCase):
         self.assertEqual(python_config["python_version"], "3.12")
         # conda_env 被本地配置覆盖
         self.assertEqual(python_config["conda_env"], "local_test_env")
+    
+    def test_grok_providers_override(self):
+        """测试grok服务的提供商配置是否被local.json正确覆盖"""
+        grok_providers = self.config.get_service_config("grok")["providers"]
+        self.assertIn("official", grok_providers)
+        self.assertIn("superlang", grok_providers)
+        self.assertTrue(grok_providers["official"]["enabled"])
+        self.assertFalse(grok_providers["superlang"]["use_proxy"])
 
 if __name__ == '__main__':
     unittest.main() 

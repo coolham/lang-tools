@@ -117,6 +117,13 @@ class TestGrokBasic(unittest.TestCase):
         self.assertTrue(len(content) > 0)
         self.logger.info(f"完整响应: {content}")
 
+    def test_get_providers(self):
+        """测试获取可用的服务商列表"""
+        providers = self.service.get_providers()
+        self.logger.info(f"可用的服务商: {providers}")
+        self.assertIn(self.PROVIDER_DIRECT, providers)
+        self.assertIn("superlang", providers)
+
 
 if __name__ == '__main__':
     unittest.main()

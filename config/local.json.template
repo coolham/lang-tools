@@ -1,52 +1,68 @@
 {
     "ai_services": {
         "openai": {
+            "default_provider": "official",
             "providers": {
                 "official": {
-                    "api_key": "your-openai-api-key-here",
-                    "organization_id": "your-org-id-here"
+                    "api_key": "YOUR_OPENAI_API_KEY",
+                    "organization_id": "YOUR_OPENAI_ORG_ID"
                 },
                 "openrouter": {
-                    "api_key": "your-openrouter-api-key-here"
+                    "api_key": "YOUR_OPENROUTER_API_KEY"
                 },
                 "azure": {
-                    "api_key": "your-azure-api-key-here",
-                    "base_url": "https://your-resource-name.openai.azure.com",
-                    "deployment_ids": {
-                        "gpt-35-turbo": "your-gpt-35-deployment-id",
-                        "gpt-4": "your-gpt-4-deployment-id"
-                    }
+                    "api_key": "YOUR_AZURE_API_KEY"
                 }
             }
         },
         "deepseek": {
             "providers": {
                 "official": {
-                    "api_key": "your-deepseek-api-key-here"
+                    "api_key": "YOUR_DEEPSEEK_API_KEY"
                 },
                 "zhipu": {
-                    "api_key": "your-zhipu-api-key-here"
+                    "api_key": "YOUR_ZHIPU_API_KEY"
                 },
                 "siliconflow": {
-                    "api_key": "your-siliconflow-api-key-here"
+                    "api_key": "YOUR_SILICONFLOW_API_KEY"
                 }
             }
         },
         "grok": {
-            "api_key": "your-grok-api-key-here"
+            "providers": {  
+                "official": {
+                    "api_key": "YOUR_GROK_API_KEY"
+                }
+            }
+        }
+    },
+    "proxy": {
+        "http": {
+            "enabled": false,
+            "host": "127.0.0.1",
+            "port": 10808,
+            "username": "",
+            "password": ""
+        },
+        "https": {
+            "enabled": false,
+            "host": "127.0.0.1",
+            "port": 10808,
+            "username": "",
+            "password": ""
         }
     },
     "database": {
         "host": "localhost",
         "port": 5432,
-        "username": "your-db-username",
-        "password": "your-db-password"
+        "username": "YOUR_DB_USERNAME",
+        "password": "YOUR_DB_PASSWORD"
     },
     "redis": {
         "host": "localhost",
         "port": 6379,
-        "password": "your-redis-password"
+        "password": "YOUR_REDIS_PASSWORD"
     },
-    "jwt_secret": "your-jwt-secret-here",
+    "jwt_secret": "YOUR_JWT_SECRET",
     "other_secrets": {}
 } 

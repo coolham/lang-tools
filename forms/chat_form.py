@@ -6,13 +6,15 @@ from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QPixmap, QImage
 from utils.logger import Logger
 from utils.version import version_info
-from services.models import Message, ChatHistory
+from services.message_types import Message, ChatHistory
 from services.openai_service import OpenAIService
 from services.grok_service import GrokService
+from utils.config_manager import ConfigManager
 import os
 import base64
 from PIL import Image
 import io
+import logging
 
 
 class FilePreviewWidget(QFrame):
@@ -57,17 +59,26 @@ class FilePreviewWidget(QFrame):
         self.setFixedSize(120, 180)
 
 
+"""
+类似ChatGPT的聊天功能
+"""
 class ChatForm(QWidget):
     def __init__(self):
         super().__init__()
+        config_manager = ConfigManager()
+        global_config = config_manager.get_config()
+        log_level = global_config.get('logging.level', 'INFO')
         self.logger = Logger.create_logger('chat')
         self.chat_history = ChatHistory()
         self.attached_files = []  # 存储已上传的文件路径
         
+        # 初始化配置管理器
+        config_manager = ConfigManager()
+
         # 初始化AI服务
         self.ai_services = {
-            "OpenAI": OpenAIService(),
-            "Grok": GrokService()
+            "OpenAI": OpenAIService(config_manager=config_manager),
+            "Grok": GrokService(config_manager=config_manager)
         }
         self.current_service = "OpenAI"  # 默认使用OpenAI
         
@@ -79,11 +90,32 @@ class ChatForm(QWidget):
         self.setWindowTitle('AI对话')
         layout = QVBoxLayout()
 
+        # 服务选择区域
+        service_layout = QHBoxLayout()
+        service_label = QLabel("AI服务:")
+        self.service_combo = QComboBox()
+        self.service_combo.addItems(self.ai_services.keys())
+        self.service_combo.currentTextChanged.connect(self.on_service_changed)
+        service_layout.addWidget(service_label)
+        service_layout.addWidget(self.service_combo)
+        layout.addLayout(service_layout)
+
+        # 提供商选择区域
+        ai_service = self.ai_services[self.current_service]
+        providers = ai_service.get_providers()
+        provider_layout = QHBoxLayout()
+        provider_label = QLabel("提供商:")
+        self.provider_combo = QComboBox()
+        self.provider_combo.addItems(providers)
+        self.provider_combo.currentTextChanged.connect(self.on_provider_changed)
+        provider_layout.addWidget(provider_label)
+        provider_layout.addWidget(self.provider_combo)
+        layout.addLayout(provider_layout)
+
         # 模型选择区域
         model_layout = QHBoxLayout()
         model_label = QLabel("AI模型:")
         self.model_combo = QComboBox()
-        self.model_combo.currentTextChanged.connect(self.on_model_changed)
         model_layout.addWidget(model_label)
         model_layout.addWidget(self.model_combo)
         model_layout.addStretch()
@@ -151,8 +183,10 @@ class ChatForm(QWidget):
         """加载可用的AI模型"""
         try:
             self.status_bar.showMessage("正在加载模型列表...")
-            # 获取当前服务的可用模型
-            models = self.ai_services[self.current_service].get_models()
+            # 获取当前服务和提供商的可用模型
+            service = self.service_combo.currentText()
+            provider = self.provider_combo.currentText()
+            models = self.ai_services[service].get_models()
             
             # 更新下拉框
             self.model_combo.clear()
@@ -249,7 +283,18 @@ class ChatForm(QWidget):
         try:
             # 获取AI回复
             self.status_bar.showMessage("正在获取回复...")
-            ai_message = self.ai_services[self.current_service].send_message(self.chat_history.get_messages())
+            response = self.ai_services[self.current_service].send_message(self.chat_history.get_messages())
+            
+            # 将响应转换为Message对象
+            if isinstance(response, dict):
+                ai_message = Message(
+                    role="assistant",
+                    content=response["choices"][0]["message"]["content"]
+                )
+            else:
+                # 如果response已经是Message对象，直接使用
+                ai_message = response
+                
             self.chat_history.add_message(ai_message)
             self.update_display()
             self.status_bar.showMessage("就绪")
@@ -304,4 +349,30 @@ class ChatForm(QWidget):
         """
         
         QMessageBox.about(self, "关于", about_text)
+
+    def on_service_changed(self, service_name: str):
+        """处理服务选择变化"""
+        try:
+            self.status_bar.showMessage(f"正在切换到服务: {service_name}")
+            # 更新提供商列表
+            providers = self.ai_services[service_name].get_providers()
+            self.provider_combo.clear()
+            self.provider_combo.addItems(providers)
+            self.load_models()
+            self.status_bar.showMessage("就绪")
+        except Exception as e:
+            self.logger.error(f"切换服务失败: {str(e)}")
+            self.status_bar.showMessage(f"切换服务失败: {str(e)}")
         
+
+    def on_provider_changed(self, provider_name: str):
+        """处理提供商选择变化"""
+        try:
+            self.logger.info(f"正在切换到提供商: {provider_name}")
+            self.status_bar.showMessage(f"正在切换到提供商: {provider_name}")
+            self.ai_services[self.current_service].provider = provider_name
+            self.load_models()
+            self.status_bar.showMessage("就绪")
+        except Exception as e:
+            self.logger.error(f"切换提供商失败: {str(e)}")
+            self.status_bar.showMessage(f"切换提供商失败: {str(e)}")

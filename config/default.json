@@ -23,6 +23,29 @@
         }
     },
     "ai_services": {
+        "grok": {
+            "enabled": true,
+            "default_provider": "official",
+            "default_model": "grok-1",
+            "providers": {
+                "official": {
+                    "name": "Grok Official",
+                    "enabled": true,
+                    "api_key": "",
+                    "base_url": "https://api.x.ai/v1",
+                    "use_proxy": false,
+                    "models": {
+                        "grok-1": {
+                            "max_tokens": 4096,
+                            "temperature": 0.7,
+                            "top_p": 1.0,
+                            "frequency_penalty": 0.0,
+                            "presence_penalty": 0.0
+                        }
+                    }
+                }
+            }
+        },
         "openai": {
             "enabled": true,
             "providers": {
@@ -175,30 +198,6 @@
             },
             "default_provider": "official",
             "default_model": "deepseek-chat"
-        },
-        "grok": {
-            "enabled": true,
-            "default_provider": "official",
-            "default_model": "grok-2",
-            "providers": {
-                "official": {
-                    "name": "Grok Official",
-                    "enabled": true,
-                    "api_key": "",
-                    "base_url": "https://api.x.ai/v1",
-                    "use_proxy": false,
-                    "models": {
-                        "grok-1": {
-                            "max_tokens": 4000,
-                            "temperature": 0.7
-                        },
-                        "grok-2": {
-                            "max_tokens": 8000,
-                            "temperature": 0.7
-                        }
-                    }
-                }
-            }
         }
     },
     "default_service": "openai",
@@ -207,6 +206,7 @@
         "file": "app.log",
         "max_size": 10485760,
         "backup_count": 5,
-        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "fixed_filename": false
     }
 } 

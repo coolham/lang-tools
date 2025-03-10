@@ -26,17 +26,12 @@ class GrokService(AIService):
             config_manager: 配置管理器实例
             provider_name: 指定要使用的提供商名称，若为None则使用默认提供商
         """
-        super().__init__(config_manager)
+        super().__init__(config_manager, provider_name)
         self.logger = Logger.create_logger('grok')
         self.default_model = self.DEFAULT_MODEL
         
-        # 使用指定的提供商，如果没有指定则使用默认提供商
-        if provider_name is None:
-            provider_name = self.config.get_default_provider("grok")
-        self.provider_name = provider_name
-        
         # 获取Grok配置
-        provider_config = self.config.get_provider_config("grok", provider_name)
+        provider_config = self.config.get_provider_config("grok", self.provider_name)
         self.api_key = provider_config.get("api_key", "")
         self.base_url = provider_config.get("base_url", "https://api.x.ai/v1")
         
@@ -170,3 +165,13 @@ class GrokService(AIService):
             self.logger.error(f"获取模型列表失败: {str(e)}")
             # 如果获取失败，返回支持的模型列表
             return list(self.SUPPORTED_MODELS.keys())
+
+    def get_providers(self) -> List[str]:
+        """获取可用的提供商列表"""
+        try:
+            providers = self.config.get_enabled_providers("grok")
+            self.logger.info(f"从配置中读取的提供商: {providers}")
+            return providers
+        except Exception as e:
+            self.logger.error(f"获取提供商列表失败: {str(e)}")
+            return []

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict
-from ..models import Message
+from ..message_types import Message
 
 
 class BaseProvider(ABC):

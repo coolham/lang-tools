@@ -101,6 +101,17 @@ class AIService(ABC):
         """
         pass
 
+    def get_providers(self) -> List[str]:
+        """获取可用的提供商列表"""
+        try:
+            service_name = self.__class__.__name__.lower()
+            providers = self.config.get_enabled_providers(service_name)
+            self.logger.info(f"从配置中读取的提供商: {providers}")
+            return providers
+        except Exception as e:
+            self.logger.error(f"获取提供商列表失败: {str(e)}")
+            return []
+
 
 class AIServiceImpl(AIService):
     """AI服务实现类"""

@@ -1,7 +1,7 @@
 import requests
 from typing import List, Dict
 from .base_provider import BaseProvider
-from ..models import Message
+from ..message_types import Message
 from utils.logger import Logger
 
 

@@ -161,3 +161,7 @@ class OpenAIService(AIService):
             # 如果获取失败，返回配置中定义的模型
             config = self.get_model_config()
             return list(config.get("models", {}).keys())
+
+    # 如果需要，可以覆盖 get_providers 方法
+    # def get_providers(self) -> List[str]:
+    #     return super().get_providers()

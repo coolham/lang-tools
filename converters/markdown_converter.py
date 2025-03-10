@@ -1,7 +1,7 @@
 from markitdown import MarkItDown
-from openai import OpenAI
-from common.config_manager import get_global_config
+# from openai import OpenAI
 from utils.logger import Logger
+from utils.config_manager import ConfigManager
 
 
 class MarkdownConverter:
@@ -13,12 +13,14 @@ class MarkdownConverter:
 
         # 设置OpenAI API的URL和Key
         if openai_api_url and openai_api_key:
-            self.llm_client = OpenAI(base_url=openai_api_url, api_key=openai_api_key)
+            # self.llm_client = OpenAI(base_url=openai_api_url, api_key=openai_api_key)
+            pass
         else:
             self.llm_client = None
 
         # 获取全局配置
-        self.config = get_global_config()
+        config_manager = ConfigManager()
+        self.config = config_manager.get_config()
 
     def convert_to_markdown(self, file_path: str) -> str:
         """
