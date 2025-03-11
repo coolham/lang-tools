@@ -35,6 +35,8 @@
 
 ### 安装步骤
 
+#### 方式一：直接安装
+
 1. 克隆仓库
 ```bash
 git clone https://github.com/yourusername/paper-analysis-tool.git
@@ -50,6 +52,43 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+#### 方式二：Docker 安装
+
+1. 构建Docker镜像
+```bash
+docker build -t paper-analysis-tool .
+```
+
+2. 运行Docker容器
+```bash
+# Linux/macOS
+docker run -d \
+  --name paper-analysis \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/config:/app/config \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  paper-analysis-tool
+
+# Windows (PowerShell)
+docker run -d `
+  --name paper-analysis `
+  -v ${PWD}/data:/app/data `
+  -v ${PWD}/config:/app/config `
+  -e DISPLAY=host.docker.internal:0 `
+  paper-analysis-tool
+```
+
+3. 查看容器日志
+```bash
+docker logs -f paper-analysis
+```
+
+注意：
+- 使用Docker运行时，需要正确配置X11转发以显示GUI界面
+- Windows用户需要安装X Server（如VcXsrv或Xming）
+- 数据和配置文件建议使用卷挂载方式持久化
 
 ## 📖 使用说明
 

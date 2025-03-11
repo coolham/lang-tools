@@ -1,17 +1,43 @@
 {
     "ai_services": {
         "openai": {
-            "default_provider": "official",
+            "default_provider": "openrouter",
+            "default_model": "gpt-3.5-turbo",
             "providers": {
-                "official": {
-                    "api_key": "YOUR_OPENAI_API_KEY",
-                    "organization_id": "YOUR_OPENAI_ORG_ID"
-                },
                 "openrouter": {
-                    "api_key": "YOUR_OPENROUTER_API_KEY"
-                },
-                "azure": {
-                    "api_key": "YOUR_AZURE_API_KEY"
+                    "api_key": "YOUR_OPENROUTER_API_KEY",
+                    "models": {
+                        "gpt-3.5-turbo": {
+                            "internal_name": "openai/gpt-3.5-turbo",
+                            "max_tokens": 4000,
+                            "temperature": 0.7
+                        },
+                        "gpt-4o": {
+                            "internal_name": "openai/gpt-4o",
+                            "max_tokens": 8000,
+                            "temperature": 0.7
+                        },
+                        "claude-2": {
+                            "internal_name": "anthropic/claude-2",
+                            "max_tokens": 4000,
+                            "temperature": 0.7
+                        },
+                        "claude-instant": {
+                            "internal_name": "anthropic/claude-instant-v1",
+                            "max_tokens": 4000,
+                            "temperature": 0.7
+                        },
+                        "mistral-7b": {
+                            "internal_name": "mistralai/mistral-7b-instruct",
+                            "max_tokens": 4000,
+                            "temperature": 0.7
+                        },
+                        "mixtral-8x7b": {
+                            "internal_name": "mistralai/mixtral-8x7b-instruct",
+                            "max_tokens": 4000,
+                            "temperature": 0.7
+                        }
+                    }
                 }
             }
         },
@@ -29,28 +55,53 @@
             }
         },
         "grok": {
+            "default_provider": "official",
+            "default_model": "grok-2",
             "providers": {  
                 "official": {
-                    "api_key": "YOUR_GROK_API_KEY"
+                    "api_key": "YOUR_GROK_API_KEY",
+                    "enabled": true,
+                    "use_proxy": true,
+                    "base_url": "https://api.x.ai/v1",
+                    "models": {
+                        "grok-2": {
+                            "temperature": 0.7
+                        }
+                    }
+                },
+                "superlang": {
+                    "api_key": "YOUR_GROK_API_KEY",
+                    "enabled": true,
+                    "use_proxy": false,
+                    "base_url": "http://grok.superlang.top/v1",
+                    "models": {
+                        "grok-2": {
+                            "temperature": 0.7
+                        }
+                    }
                 }
             }
         }
     },
     "proxy": {
         "http": {
-            "enabled": false,
+            "enabled": true,
             "host": "127.0.0.1",
             "port": 10808,
             "username": "",
             "password": ""
         },
         "https": {
-            "enabled": false,
+            "enabled": true,
             "host": "127.0.0.1",
             "port": 10808,
             "username": "",
             "password": ""
         }
+    },
+    "logging": {
+        "level": "INFO",
+        "fixed_filename": true
     },
     "database": {
         "host": "localhost",

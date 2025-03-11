@@ -21,11 +21,21 @@ A PyQt6-based tool for batch analysis of PDF papers and summary report generatio
 ### Requirements
 
 - Python 3.12+
-- PyQt6
-- PyMuPDF
-- Other dependencies (see requirements.txt)
+- Key Dependencies:
+  ```bash
+  pip install pyyaml        # YAML configuration support
+  pip install markdown      # Markdown processing
+  pip install markitdown    # Markdown conversion tool
+  pip install python-docx   # Word document processing
+  pip install beautifulsoup4 # HTML parsing
+  pip install PyMuPDF       # PDF file processing
+  pip install PyQt6         # GUI interface
+  pip install PySide6       # Qt6 Python bindings
+  ```
 
 ### Installation
+
+#### Option 1: Direct Installation
 
 1. Clone the repository
 ```bash
@@ -42,6 +52,43 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+#### Option 2: Docker Installation
+
+1. Build Docker image
+```bash
+docker build -t paper-analysis-tool .
+```
+
+2. Run Docker container
+```bash
+# Linux/macOS
+docker run -d \
+  --name paper-analysis \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/config:/app/config \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  paper-analysis-tool
+
+# Windows (PowerShell)
+docker run -d `
+  --name paper-analysis `
+  -v ${PWD}/data:/app/data `
+  -v ${PWD}/config:/app/config `
+  -e DISPLAY=host.docker.internal:0 `
+  paper-analysis-tool
+```
+
+3. View container logs
+```bash
+docker logs -f paper-analysis
+```
+
+Note:
+- X11 forwarding needs to be properly configured to display the GUI interface when using Docker
+- Windows users need to install an X Server (such as VcXsrv or Xming)
+- Data and configuration files should be persisted using volume mounts
 
 ## 📖 Usage Guide
 
