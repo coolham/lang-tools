@@ -170,15 +170,33 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# 
-.vscode
-data
-output/
-**/__pycache__
+# Logs
+*.log
+logs/
 
-# 
-.idea
+# Local configurations
+.env
+config/local.json
+config.local.json
+
+# Virtual Environment
+venv/
+ENV/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Distribution
+dist/
+build/
 
 # 
 .DS_Store

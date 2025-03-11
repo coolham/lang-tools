@@ -2,44 +2,71 @@ import logging
 from utils.logger import Logger
 from PyQt6.QtWidgets import QApplication
 import sys
-from utils.logger import Logger
-from common.config_manager import get_global_config
+from utils.version import version_info
+from utils.config_manager import ConfigManager
+
 
 def handle_exception(exc_type, exc_value, exc_traceback):
-    """ 处理未捕获的异常 """
+    """ Handle uncaught exceptions """
     if issubclass(exc_type, KeyboardInterrupt):
-        # 对于 KeyboardInterrupt，直接调用默认处理
+        # For KeyboardInterrupt, use default handler
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
-    # Set up logging
-    logger = Logger.create_logger('app', 'lang_tools.log', logging.INFO)
-    logger.error("未处理异常", exc_info=(exc_type, exc_value, exc_traceback))
-        
-
+    # Use the default parameters set by set_defaults
+    logger = Logger.create_logger('app')
+    logger.error("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 
 def main():
-    global_config = get_global_config()
-    log_level = global_config.get('log.level', 'INFO')
+    # 使用ConfigManager加载全局配置
+    config_manager = ConfigManager()
+    global_config = config_manager.get_config()
+    log_level = global_config.get('logging.level', 'INFO')
+    fixed_filename = global_config.get('logging.fixed_filename', False)
 
+    # Set default logger parameters FIRST
+    Logger.set_defaults('lang_tools.log', getattr(logging, log_level.upper()), fixed_filename)
 
-    # Initialize the application
+    # Then create loggers
+    logger = Logger.create_logger('app', 'lang_tools.log', getattr(logging, log_level.upper()), fixed_filename=True)
+    # Log application startup information
+    logger.info("=" * 50)
+    logger.info(f"Lang Tools Startup - Version {version_info.version}")
+    logger.info(f"Release Date: {version_info.release_date}")
+    logger.info(f"Author: {version_info.author}")
+    logger.info(f"License: {version_info.license}")
+    logger.info("=" * 50)
+
+    # Log dependency information
+    logger.info("Dependencies:")
+    logger.info(version_info.requirements)
+
+    # Log changelog
+    logger.info("Changelog:")
+    logger.info(version_info.changelog)
+    logger.info("=" * 50)
+
+    # Initialize application
+    logger.info("Initializing application...")
     app = QApplication(sys.argv)
 
+    # Set up exception handler
     sys.excepthook = handle_exception
-    
+    logger.info("Exception handler configured")
+
+    # Create main window
     from forms.main_window import MainWindow
-    # Create the main window
     main_window = MainWindow()
     main_window.show()
+    logger.info("Main window created and displayed")
 
-    # Set up logging
-    logger = Logger.create_logger('app', 'lang_tools.log', logging.DEBUG)
-    logger.info('Application started')
+    # Log application startup completion
+    logger.info("Application initialization completed, starting main loop")
 
-    # Execute the application
+    # Run application
     sys.exit(app.exec())
+
 
 if __name__ == '__main__':
     main()

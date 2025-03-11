@@ -1,0 +1,30 @@
+# 版本信息
+VERSION = "0.1.1"
+RELEASE_DATE = "2025-03-11"
+
+# 更新说明
+CHANGELOG = f"""
+{VERSION} (2025-03-07)
+------------------
+- 初始版本发布
+- 支持OpenAI和Grok API
+- 实现基本的对话功能
+- 支持文件上传和预览
+- 支持多模型选择
+- 添加状态栏显示
+- 实现日志记录
+"""
+
+# 依赖要求
+REQUIREMENTS = """
+PyQt6>=6.4.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+Pillow>=10.0.0
+openai>=1.0.0
+"""
+
+# 作者信息
+AUTHOR = "Xingshizhai"
+EMAIL = "xingshizhzhigaailcom"
+LICENSE = "MIT" 
