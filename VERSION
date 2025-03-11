@@ -1,6 +1,6 @@
 # 版本信息
-VERSION = "0.1.0"
-RELEASE_DATE = "2025-03-07"
+VERSION = "0.1.1"
+RELEASE_DATE = "2025-03-11"
 
 # 更新说明
 CHANGELOG = f"""
@@ -25,6 +25,6 @@ openai>=1.0.0
 """
 
 # 作者信息
-AUTHOR = "Your Name"
-EMAIL = "your.email@example.com"
+AUTHOR = "Xingshizhai"
+EMAIL = "xingshizhzhigaailcom"
 LICENSE = "MIT" 
