@@ -123,24 +123,182 @@ docker logs -f paper-analysis
 - **超时处理**：自动检测分析超时并重试
 - **断点续传**：支持分析中断后继续未完成的分析
 
-## 🔧 配置说明
+## �� 配置说明
 
 ### AI服务配置
 
-支持多个AI服务提供商：
-- OpenAI
-- Grok
-- Deepseek
+本项目支持多个AI服务提供商，配置步骤如下：
 
-每个服务提供商支持多个模型，可以在界面上自由切换。
-
-### 超时设置
-
-默认超时时间为5分钟，最大重试次数为3次。这些参数可以在代码中调整：
-```python
-TIMEOUT_SECONDS = 300  # 5分钟超时
-MAX_RETRIES = 3       # 最大重试次数
+1. 复制配置模板文件：
+```bash
+cp config/local.json.template config/local.json
 ```
+
+2. 配置你需要的AI服务：
+
+#### OpenAI (通过OpenRouter)
+```json
+"openai": {
+    "default_provider": "openrouter",
+    "default_model": "gpt-3.5-turbo",
+    "providers": {
+        "openrouter": {
+            "api_key": "你的_OPENROUTER_API_密钥",
+            "models": {
+                "gpt-3.5-turbo": {
+                    "internal_name": "openai/gpt-3.5-turbo",
+                    "max_tokens": 4000,
+                    "temperature": 0.7
+                }
+                // ... 其他模型配置 ...
+            }
+        }
+    }
+}
+```
+
+#### Deepseek
+```json
+"deepseek": {
+    "providers": {
+        "official": {
+            "api_key": "你的_DEEPSEEK_API_密钥"
+        },
+        "zhipu": {
+            "api_key": "你的_智谱_API_密钥"
+        },
+        "siliconflow": {
+            "api_key": "你的_SILICONFLOW_API_密钥"
+        }
+    }
+}
+```
+
+#### Grok
+```json
+"grok": {
+    "default_provider": "official",
+    "default_model": "grok-2",
+    "providers": {
+        "official": {
+            "api_key": "你的_GROK_API_密钥",
+            "enabled": true,
+            "use_proxy": true,
+            "base_url": "https://api.x.ai/v1"
+        },
+        "superlang": {
+            "api_key": "你的_GROK_API_密钥",
+            "enabled": true,
+            "use_proxy": false,
+            "base_url": "http://grok.superlang.top/v1"
+        }
+    }
+}
+```
+
+### 代理配置
+
+如果需要使用代理访问API：
+
+```json
+"proxy": {
+    "http": {
+        "enabled": true,
+        "host": "127.0.0.1",
+        "port": 10808,
+        "username": "",
+        "password": ""
+    },
+    "https": {
+        "enabled": true,
+        "host": "127.0.0.1",
+        "port": 10808,
+        "username": "",
+        "password": ""
+    }
+}
+```
+
+### 日志配置
+
+配置日志级别和文件处理：
+
+```json
+"logging": {
+    "level": "INFO",
+    "fixed_filename": true
+}
+```
+
+### 数据库配置
+
+如果需要数据库支持：
+
+```json
+"database": {
+    "host": "localhost",
+    "port": 5432,
+    "username": "你的数据库用户名",
+    "password": "你的数据库密码"
+}
+```
+
+### Redis配置
+
+Redis支持配置：
+
+```json
+"redis": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "你的Redis密码"
+}
+```
+
+### 安全配置
+
+```json
+"jwt_secret": "你的JWT密钥",
+"other_secrets": {}
+```
+
+### 重要注意事项
+
+1. 切勿将 `local.json` 文件提交到版本控制系统
+2. 妥善保管你的API密钥，不要分享给他人
+3. 在生产环境中使用环境变量存储敏感信息
+4. 如果在公司防火墙后面，请确保启用代理
+5. 根据需要调整日志级别（DEBUG、INFO、WARNING、ERROR）
+
+### 配置获取说明
+
+1. **OpenRouter API密钥**：
+   - 访问 [OpenRouter官网](https://openrouter.ai/)
+   - 注册并创建API密钥
+
+2. **Deepseek API密钥**：
+   - 访问 [Deepseek官网](https://platform.deepseek.com/)
+   - 注册账号并获取API密钥
+
+3. **智谱API密钥**：
+   - 访问 [智谱AI](https://open.bigmodel.cn/)
+   - 注册开发者账号获取密钥
+
+4. **Grok API密钥**：
+   - 需要通过特定渠道申请
+   - 或使用superlang提供的代理服务
+
+### 模型选择建议
+
+1. **论文分析推荐模型**：
+   - GPT-4/Claude-2：分析准确度最高
+   - GPT-3.5-turbo：性价比较高
+   - Mixtral-8x7b：开源模型中表现最好
+
+2. **批量处理建议**：
+   - 使用OpenRouter可以自动负载均衡
+   - 建议开启代理以提高连接稳定性
+   - 对于大批量任务，建议使用较为经济的模型
 
 ## 📝 输出文件
 

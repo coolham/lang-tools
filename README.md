@@ -127,20 +127,148 @@ Note:
 
 ### AI Service Configuration
 
-Support multiple AI service providers:
-- OpenAI
-- Grok
-- Deepseek
+The project supports multiple AI service providers. To configure them:
 
-Each service provider supports multiple models that can be switched freely in the interface.
-
-### Timeout Settings
-
-Default timeout is 5 minutes with maximum 3 retries. These parameters can be adjusted in the code:
-```python
-TIMEOUT_SECONDS = 300  # 5 minutes timeout
-MAX_RETRIES = 3       # Maximum retry attempts
+1. Copy the template configuration file:
+```bash
+cp config/local.json.template config/local.json
 ```
+
+2. Configure your preferred AI service:
+
+#### OpenAI (via OpenRouter)
+```json
+"openai": {
+    "default_provider": "openrouter",
+    "default_model": "gpt-3.5-turbo",
+    "providers": {
+        "openrouter": {
+            "api_key": "YOUR_OPENROUTER_API_KEY",
+            "models": {
+                "gpt-3.5-turbo": {
+                    "internal_name": "openai/gpt-3.5-turbo",
+                    "max_tokens": 4000,
+                    "temperature": 0.7
+                }
+                // ... other models ...
+            }
+        }
+    }
+}
+```
+
+#### Deepseek
+```json
+"deepseek": {
+    "providers": {
+        "official": {
+            "api_key": "YOUR_DEEPSEEK_API_KEY"
+        },
+        "zhipu": {
+            "api_key": "YOUR_ZHIPU_API_KEY"
+        },
+        "siliconflow": {
+            "api_key": "YOUR_SILICONFLOW_API_KEY"
+        }
+    }
+}
+```
+
+#### Grok
+```json
+"grok": {
+    "default_provider": "official",
+    "default_model": "grok-2",
+    "providers": {
+        "official": {
+            "api_key": "YOUR_GROK_API_KEY",
+            "enabled": true,
+            "use_proxy": true,
+            "base_url": "https://api.x.ai/v1"
+        },
+        "superlang": {
+            "api_key": "YOUR_GROK_API_KEY",
+            "enabled": true,
+            "use_proxy": false,
+            "base_url": "http://grok.superlang.top/v1"
+        }
+    }
+}
+```
+
+### Proxy Configuration
+
+If you need to use a proxy for API access:
+
+```json
+"proxy": {
+    "http": {
+        "enabled": true,
+        "host": "127.0.0.1",
+        "port": 10808,
+        "username": "",
+        "password": ""
+    },
+    "https": {
+        "enabled": true,
+        "host": "127.0.0.1",
+        "port": 10808,
+        "username": "",
+        "password": ""
+    }
+}
+```
+
+### Logging Configuration
+
+Configure logging level and file handling:
+
+```json
+"logging": {
+    "level": "INFO",
+    "fixed_filename": true
+}
+```
+
+### Database Configuration
+
+If you need database support:
+
+```json
+"database": {
+    "host": "localhost",
+    "port": 5432,
+    "username": "YOUR_DB_USERNAME",
+    "password": "YOUR_DB_PASSWORD"
+}
+```
+
+### Redis Configuration
+
+For Redis support:
+
+```json
+"redis": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "YOUR_REDIS_PASSWORD"
+}
+```
+
+### Security Configuration
+
+```json
+"jwt_secret": "YOUR_JWT_SECRET",
+"other_secrets": {}
+```
+
+### Important Notes
+
+1. Never commit your `local.json` file to version control
+2. Keep your API keys secure and never share them
+3. Use environment variables for sensitive information in production
+4. Make sure to enable the proxy if you're behind a corporate firewall
+5. Adjust the logging level based on your needs (DEBUG, INFO, WARNING, ERROR)
 
 ## 📝 Output Files
 
