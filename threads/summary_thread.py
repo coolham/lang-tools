@@ -37,28 +37,57 @@ class SummaryThread(QThread):
 
     def run(self):
         """运行汇总线程"""
+
         try:
             self.is_running = True
             self.logger.info("开始生成汇总报告")
+            self.logger.info(f"收到的原始数据: {self.results}")
             
             # 构建汇总内容
             summary_content = []
             for item in self.results:
                 try:
-                    # 获取文件信息
+                    self.logger.info(f"正在处理文件: {item.get('filename', '')}")
+                    self.logger.info(f"当前item的完整内容: {item}")
+                    
+                    # 检查是否是分析结果字典
+                    if isinstance(item, tuple) and len(item) == 2:
+                        # 如果是元组，说明是(file_path, content)格式
+                        file_path, content = item
+                        item = {
+                            "file_path": file_path,
+                            "filename": os.path.basename(file_path),
+                            "directory": os.path.dirname(file_path),
+                            "content": content,
+                            "analysis_status": "已分析"
+                        }
+                    
+                    # 验证必要字段
+                    required_fields = ['filename', 'analysis_result']  # 修改必要字段
+                    missing_fields = [field for field in required_fields if not item.get(field)]
+                    if missing_fields:
+                        self.logger.warning(f"文件缺少必要字段: {missing_fields}")
+                        self.logger.warning(f"当前item的内容: {item}")
+                        continue
+                    
+                    # 获取文件信息，保持与AnalysisThread输出的一致性
                     file_info = {
                         "global_index": item.get("global_index", "N/A"),
                         "filename": item.get("filename", ""),
                         "directory": item.get("directory", ""),
                         "file_path": item.get("file_path", ""),
-                        "analysis_status": item.get("analysis_status", "未分析")
+                        "analysis_status": "已分析",
+                        "analysis_time": item.get("analysis_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                     }
                     
                     # 获取分析结果
-                    analysis_content = item.get("content", "")
-                    
-                    # 记录处理的文件信息
-                    self.logger.info(f"正在处理文件: {file_info['filename']}")
+                    analysis_content = item.get("analysis_result", "")  # 修改为使用analysis_result
+                    if not analysis_content:
+                        # 尝试从其他可能的字段获取内容
+                        analysis_content = item.get("content", "")  # 尝试从content字段获取
+                        if not analysis_content:
+                            self.logger.warning(f"文件 {file_info['filename']} 的分析结果为空")
+                            continue
                     
                     # 构建单个文件的汇总内容
                     file_content = {
@@ -66,14 +95,21 @@ class SummaryThread(QThread):
                         "analysis": analysis_content
                     }
                     summary_content.append(file_content)
+                    self.logger.info(f"成功添加文件 {file_info['filename']} 的汇总内容")
                     
-                except KeyError as e:
-                    self.logger.error(f"处理文件信息时出现键错误: {str(e)}")
+                except Exception as e:
+                    self.logger.error(f"处理文件信息时出现错误: {str(e)}")
                     self.logger.error(f"当前item内容: {item}")
                     continue
             
             if not summary_content:
+                self.logger.error("没有有效的汇总内容可用")
                 raise ValueError("没有有效的汇总内容")
+            
+            self.logger.info(f"成功处理的文件数量: {len(summary_content)}")
+            
+            # 按global_index排序
+            summary_content.sort(key=lambda x: str(x["file_info"]["global_index"]))
             
             # 构建增强的指令
             enhanced_instruction = f"""
@@ -86,7 +122,7 @@ class SummaryThread(QThread):
 |------|---------|----------|----------|----------|
 
 注意事项：
-1. 序号：使用文件的global_index
+1. 序号：使用文件的global_index（已排序）
 2. 论文标题：使用完整标题
 3. 实现类型：必须是"official"、"unofficial"或"未知"
 4. 判断依据：简要说明判断实现类型的具体证据
@@ -114,6 +150,7 @@ class SummaryThread(QThread):
                 formatted_item = (
                     f"文件 {file_info['global_index']}：\n"
                     f"- 标题: {title}\n"
+                    f"- 分析时间: {file_info['analysis_time']}\n"
                     f"- 分析结果:\n{analysis}\n"
                     f"---\n"
                 )

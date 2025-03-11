@@ -2,7 +2,7 @@ import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
                             QPushButton, QLabel, QFileDialog, QProgressBar,
                             QMessageBox, QSplitter, QFrame, QScrollArea, QComboBox,
-                            QDialog, QListWidget, QListWidgetItem, QGroupBox)
+                            QDialog, QListWidget, QListWidgetItem, QGroupBox, QGraphicsEffect)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
 from utils.logger import Logger
@@ -16,6 +16,7 @@ from forms.analysis_result_window import AnalysisResultWindow
 from threads.analysis_thread import AnalysisThread
 from threads.summary_thread import SummaryThread
 from utils.file_index_manager import FileIndexManager
+from widgets.file_selection_dialog import FileSelectionDialog
 
 
 
@@ -595,17 +596,14 @@ class ArticleForm(QWidget):
         self.progress_bar.setVisible(False)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                border: none;
-                border-radius: 4px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
                 text-align: center;
-                background-color: #f8f9fa;
-                height: 20px;
-                font-size: 12px;
-                color: #495057;
+                background-color: #f0f0f0;
             }
             QProgressBar::chunk {
-                background-color: #007bff;
-                border-radius: 4px;
+                background-color: #4CAF50;
+                border-radius: 2px;
             }
         """)
         
@@ -1241,164 +1239,20 @@ class ArticleForm(QWidget):
                 self.logger.warning("未选择目录")
                 QMessageBox.warning(self, "警告", "请先选择一个目录")
                 return
-
+            
             # 创建文件选择对话框
-            dialog = QDialog(self)
-            dialog.setWindowTitle("选择要分析的文件")
-            dialog.setMinimumWidth(600)
-            dialog.setMinimumHeight(500)
-            dialog.setStyleSheet("""
-                QDialog {
-                    background-color: #ffffff;
-                }
-                QListWidget {
-                    border: 1px solid #dee2e6;
-                    border-radius: 4px;
-                    background-color: #ffffff;
-                    padding: 5px;
-                    font-family: "Consolas", monospace;
-                    font-size: 10pt;
-                }
-                QListWidget::item {
-                    padding: 8px;
-                    border-bottom: 1px solid #f8f9fa;
-                    margin: 2px;
-                    border-radius: 4px;
-                }
-                QListWidget::item:selected {
-                    background-color: #007bff;
-                    color: white;
-                    font-weight: bold;
-                }
-                QListWidget::item:hover {
-                    background-color: #e9ecef;
-                    color: #212529;
-                }
-                QListWidget::item:selected:hover {
-                    background-color: #0056b3;
-                    color: white;
-                }
-                QListWidget::item:alternate {
-                    background-color: #f8f9fa;
-                }
-            """)
-
-            # 创建布局
-            layout = QVBoxLayout(dialog)
-            layout.setSpacing(10)
-            layout.setContentsMargins(15, 15, 15, 15)
-
-            # 添加说明标签
-            info_label = QLabel(f"当前目录: {self.current_directory}")
-            info_label.setStyleSheet("""
-                QLabel {
-                    color: #495057;
-                    font-weight: bold;
-                    padding: 5px;
-                    background-color: #f8f9fa;
-                    border-radius: 4px;
-                }
-            """)
-            info_label.setWordWrap(True)
-            layout.addWidget(info_label)
-
-            # 创建文件列表
-            list_widget = QListWidget()
-            list_widget.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
-            list_widget.setAlternatingRowColors(True)
-
-            # 添加文件到列表
-            for filename, info in sorted(self.file_index["files"].items(), key=lambda x: x[1]["index"]):
-                # 创建带序号的显示文本
-                display_text = f"{info['index']:04d}. {filename}"
-                if info["last_analyzed"]:
-                    display_text += f" (已分析: {info['analysis_count']}次)"
-                
-                item = QListWidgetItem(display_text)
-                # 存储完整文件路径作为item的数据
-                item.setData(Qt.ItemDataRole.UserRole, os.path.join(self.current_directory, filename))
-                list_widget.addItem(item)
-                
-                # 如果文件已经被选中，设置为选中状态
-                if os.path.join(self.current_directory, filename) in self.selected_files:
-                    item.setSelected(True)
-
-            layout.addWidget(list_widget)
-
-            # 添加选择计数标签
-            selection_count_label = QLabel("已选择: 0 个文件")
-            selection_count_label.setStyleSheet("""
-                QLabel {
-                    color: #495057;
-                    padding: 5px;
-                }
-            """)
-            layout.addWidget(selection_count_label)
-
-            # 更新选择计数的函数
-            def update_selection_count():
-                count = len(list_widget.selectedItems())
-                selection_count_label.setText(f"已选择: {count} 个文件")
-
-            # 连接选择变化信号
-            list_widget.itemSelectionChanged.connect(update_selection_count)
-
-            # 添加按钮
-            button_layout = QHBoxLayout()
+            dialog = FileSelectionDialog(
+                parent=self,
+                directory=self.current_directory,
+                file_index=self.file_index,
+                selected_files=self.selected_files,
+                title="选择要分析的文件"
+            )
             
-            # 按钮样式
-            button_style = """
-                QPushButton {
-                    background-color: %s;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 8px 16px;
-                    min-width: 80px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: %s;
-                }
-                QPushButton:pressed {
-                    background-color: %s;
-                }
-            """
-
-            # 创建按钮
-            select_all_btn = QPushButton("全选")
-            select_all_btn.setStyleSheet(button_style % ('#6c757d', '#5a6268', '#545b62'))
-            
-            clear_btn = QPushButton("清除选择")
-            clear_btn.setStyleSheet(button_style % ('#6c757d', '#5a6268', '#545b62'))
-            
-            ok_btn = QPushButton("确定")
-            ok_btn.setStyleSheet(button_style % ('#28a745', '#218838', '#1e7e34'))
-            
-            cancel_btn = QPushButton("取消")
-            cancel_btn.setStyleSheet(button_style % ('#dc3545', '#c82333', '#bd2130'))
-
-            # 添加按钮到布局
-            button_layout.addWidget(select_all_btn)
-            button_layout.addWidget(clear_btn)
-            button_layout.addStretch()
-            button_layout.addWidget(ok_btn)
-            button_layout.addWidget(cancel_btn)
-            layout.addLayout(button_layout)
-
-            # 绑定按钮事件
-            select_all_btn.clicked.connect(list_widget.selectAll)
-            clear_btn.clicked.connect(list_widget.clearSelection)
-            ok_btn.clicked.connect(dialog.accept)
-            cancel_btn.clicked.connect(dialog.reject)
-
-            # 显示对话框
+            # 显示对话框并处理结果
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 # 获取选中的文件
-                self.selected_files = [
-                    item.data(Qt.ItemDataRole.UserRole)
-                    for item in list_widget.selectedItems()
-                ]
+                self.selected_files = dialog.get_selected_files()
                 # 更新显示
                 self.update_selected_files_display()
                 self.logger.info(f"已选择 {len(self.selected_files)} 个文件")
@@ -1407,6 +1261,101 @@ class ArticleForm(QWidget):
             self.logger.error(f"显示文件选择对话框时发生错误: {str(e)}")
             QMessageBox.critical(self, "错误", f"显示文件选择对话框时发生错误: {str(e)}")
         
+    def generate_file_summary_table(self):
+        """生成文件汇总表格，包含目录下所有文件"""
+        try:
+            if not self.current_directory or not self.file_index:
+                self.logger.warning("未选择目录")
+                return
+            
+            # 获取目录下所有文件
+            all_files = []
+            for filename, file_info in self.file_index["files"].items():
+                file_path = os.path.join(self.current_directory, filename)
+                try:
+                    # 获取文件大小（以MB为单位）
+                    file_size = os.path.getsize(file_path) / (1024 * 1024)
+                    file_info['size_mb'] = round(file_size, 2)
+                    file_info['file_path'] = file_path
+                    all_files.append(file_info)
+                except Exception as e:
+                    self.logger.error(f"获取文件{filename}大小时出错: {str(e)}")
+                    continue
+            
+            # 按文件索引排序
+            all_files.sort(key=lambda x: x['index'])
+            
+            # 生成表格内容
+            table_content = [
+                "# 文件汇总表格\n\n",
+                f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n",
+                f"目录：{self.current_directory}\n",
+                f"总文件数：{len(all_files)}\n",
+                f"选中文件数：{len(self.selected_files)}\n\n",
+                "| 序号 | 文件名 | 大小(MB) | 状态 | 分析次数 | 最后分析时间 | 汇总状态 |",
+                "|------|--------|-----------|--------|----------|--------------|----------|"
+            ]
+            
+            # 添加文件信息
+            for file_info in all_files:
+                filename = os.path.basename(file_info['file_path'])
+                file_path = file_info['file_path']
+                
+                # 确定文件状态
+                status = []
+                if file_info['size_mb'] > 30:
+                    status.append("⚠️超大文件")
+                if file_path in self.selected_files:
+                    status.append("✅已选择")
+                status = ", ".join(status) if status else "未选择"
+                
+                # 格式化时间
+                last_analysis_time = file_info.get("last_analysis_time", "未分析")
+                if last_analysis_time != "未分析":
+                    try:
+                        last_analysis_time = datetime.fromisoformat(last_analysis_time).strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        pass
+                
+                # 获取汇总状态
+                summary_status = "未汇总"
+                if "summary_status" in file_info:
+                    summary_status = f"已汇总 ({file_info['summary_status']})"
+                
+                # 添加表格行
+                table_content.append(
+                    f"| {file_info['index']:04d} | {filename} | {file_info['size_mb']:.2f} | "
+                    f"{status} | {file_info['analysis_count']} | {last_analysis_time} | {summary_status} |"
+                )
+            
+            # 保存到文件
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            summary_dir = os.path.join(self.current_directory, "summaries")
+            os.makedirs(summary_dir, exist_ok=True)
+            
+            file_path = os.path.join(summary_dir, f"file_summary_{timestamp}.md")
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(table_content))
+            
+            self.logger.info(f"文件汇总表格已保存到: {file_path}")
+            self.update_status(f"文件汇总表格已生成: {file_path}")
+            
+            # 显示成功消息
+            QMessageBox.information(
+                self,
+                "文件汇总表格已生成",
+                f"文件汇总表格已保存到:\n{file_path}\n\n"
+                f"共包含 {len(all_files)} 个文件的信息\n"
+                f"其中 {len(self.selected_files)} 个文件被选中进行分析"
+            )
+            
+            return all_files  # 返回所有文件信息，供其他函数使用
+            
+        except Exception as e:
+            self.logger.error(f"生成文件汇总表格时发生错误: {str(e)}")
+            QMessageBox.warning(self, "警告", f"生成文件汇总表格时发生错误: {str(e)}")
+            return None
+
     def start_analysis(self):
         """开始分析"""
         try:
@@ -1424,6 +1373,36 @@ class ArticleForm(QWidget):
                     QMessageBox.warning(self, "警告", "分析指令不能为空")
                     return
             
+            # 先生成文件汇总表格，并获取所有文件信息
+            all_files = self.generate_file_summary_table()
+            if not all_files:
+                return
+                
+            # 过滤出要分析的文件（排除大于30MB的文件）
+            files_to_analyze = []
+            skipped_files = []
+            
+            for file_info in all_files:
+                file_path = file_info['file_path']
+                if file_path not in self.selected_files:
+                    continue
+                    
+                if file_info['size_mb'] > 30:
+                    skipped_files.append((file_path, file_info['size_mb']))
+                else:
+                    files_to_analyze.append(file_path)
+            
+            # 如果有被跳过的文件，显示提示
+            if skipped_files:
+                skip_msg = "以下文件因大于30MB而被跳过：\n\n"
+                for file_path, size in skipped_files:
+                    skip_msg += f"- {os.path.basename(file_path)} ({size:.2f}MB)\n"
+                QMessageBox.warning(self, "文件跳过提示", skip_msg)
+            
+            if not files_to_analyze:
+                QMessageBox.warning(self, "警告", "没有可分析的文件（所有选中的文件都超过30MB）")
+                return
+            
             # 清除旧的分析结果
             self.analysis_results.clear()
             
@@ -1434,10 +1413,10 @@ class ArticleForm(QWidget):
                     widget.deleteLater()
             
             # 重置进度条和计数
-            self.progress_bar.setMaximum(len(self.selected_files))
+            self.progress_bar.setMaximum(len(files_to_analyze))
             self.progress_bar.setValue(0)
             self.progress_bar.setVisible(True)
-            self.analysis_count_label.setText(f"0/{len(self.selected_files)}")
+            self.analysis_count_label.setText(f"0/{len(files_to_analyze)}")
             
             # 禁用汇总和保存按钮
             self.summary_button.setEnabled(False)
@@ -1453,7 +1432,7 @@ class ArticleForm(QWidget):
             
             # 按文件索引顺序排序文件
             sorted_files = sorted(
-                self.selected_files,
+                files_to_analyze,
                 key=lambda x: self.file_index["files"][os.path.basename(x)]["index"]
             )
             
@@ -1465,8 +1444,8 @@ class ArticleForm(QWidget):
                 self.analysis_threads.append(thread)
                 thread.start()
             
-            self.logger.info(f"开始分析 {len(self.selected_files)} 个PDF文件")
-            self.update_status(f"开始分析 {len(self.selected_files)} 个PDF文件...")
+            self.logger.info(f"开始分析 {len(files_to_analyze)} 个PDF文件")
+            self.update_status(f"开始分析 {len(files_to_analyze)} 个PDF文件...")
             
         except Exception as e:
             self.logger.error(f"启动分析时发生错误: {str(e)}")
@@ -1571,5 +1550,40 @@ class ArticleForm(QWidget):
         except Exception as e:
             self.logger.error(f"更新文件选择显示时发生错误: {str(e)}")
             self.selected_files_display.setText("更新文件显示时发生错误")
+
+    def setup_progress_bar_style(self):
+        """设置进度条样式"""
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                text-align: center;
+                background-color: #f0f0f0;
+            }
+            QProgressBar::chunk {
+                background-color: #4CAF50;
+                border-radius: 2px;
+            }
+        """)
+
+    def fix_styles(self):
+        """修复样式"""
+        # 修复进度条样式
+        self.setup_progress_bar_style()
         
-        
+        # 修复其他组件样式
+        for widget in self.findChildren(QWidget):
+            if widget.styleSheet() and "box-shadow" in widget.styleSheet():
+                # 移除box-shadow相关样式
+                style = widget.styleSheet()
+                style = '\n'.join([line for line in style.split('\n') 
+                                 if 'box-shadow' not in line])
+                widget.setStyleSheet(style)
+                
+                # 添加边框效果
+                widget.setStyleSheet(widget.styleSheet() + """
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    background-color: white;
+                """)
+
