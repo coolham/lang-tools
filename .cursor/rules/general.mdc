@@ -1,0 +1,9 @@
+---
+Description: General Guidelines
+Globs: *
+---
+# General Coding Guidelines
+- Use PyQt5 for UI components.
+- Always provide concise comments explaining comple logic.
+- Prioritize readability and maintainablity.
+

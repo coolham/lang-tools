@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QMainWindow, QMenuBar, QStatusBar, QTabWidget
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 from forms.markdown_form import MarkdownForm
-from forms.artical_form import ArticleForm
+from forms.article_analysis_form import ArticleAnalysisForm
 from forms.chat_form import ChatForm
 from utils.logger import Logger
 
@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(chat_tab, "Chat")
 
         # Article标签页
-        article_tab = ArticleForm()
+        article_tab = ArticleAnalysisForm()
         tabs.addTab(article_tab, "Article")
 
         self.setCentralWidget(tabs)

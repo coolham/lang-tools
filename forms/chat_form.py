@@ -3,60 +3,19 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
                             QFileDialog, QScrollArea, QFrame, QComboBox,
                             QDialog, QMessageBox)
 from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QIcon, QPixmap, QImage
+from PyQt6.QtGui import QIcon, QPixmap, QImage, QKeySequence, QShortcut, QFont
 from utils.logger import Logger
 from utils.version import version_info
 from services.message_types import Message, ChatHistory
 from services.openai_service import OpenAIService
 from services.grok_service import GrokService
 from utils.config_manager import ConfigManager
+from widgets.file_preview_widget import FilePreviewWidget
 import os
 import base64
 from PIL import Image
 import io
 import logging
-
-
-class FilePreviewWidget(QFrame):
-    """文件预览组件"""
-    def __init__(self, file_path: str, parent=None):
-        super().__init__(parent)
-        self.file_path = file_path
-        self.init_ui()
-
-    def init_ui(self):
-        layout = QVBoxLayout()
-        
-        # 文件名标签
-        file_name = os.path.basename(self.file_path)
-        name_label = QLabel(file_name)
-        name_label.setWordWrap(True)
-        layout.addWidget(name_label)
-        
-        # 预览区域
-        preview_label = QLabel()
-        preview_label.setFixedSize(100, 100)
-        preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # 根据文件类型显示不同的预览
-        if self.file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-            pixmap = QPixmap(self.file_path)
-            scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio)
-            preview_label.setPixmap(scaled_pixmap)
-        else:
-            preview_label.setText("文件")
-            
-        layout.addWidget(preview_label)
-        
-        # 删除按钮
-        delete_btn = QPushButton("删除")
-        delete_btn.setFixedWidth(60)
-        delete_btn.clicked.connect(self.deleteLater)
-        layout.addWidget(delete_btn)
-        
-        self.setLayout(layout)
-        self.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
-        self.setFixedSize(120, 180)
 
 
 """
@@ -65,63 +24,123 @@ class FilePreviewWidget(QFrame):
 class ChatForm(QWidget):
     def __init__(self):
         super().__init__()
-        config_manager = ConfigManager()
-        global_config = config_manager.get_config()
-        log_level = global_config.get('logging.level', 'INFO')
-        self.logger = Logger.create_logger('chat')
+        self.init_config()
         self.chat_history = ChatHistory()
         self.attached_files = []  # 存储已上传的文件路径
         
-        # 初始化配置管理器
-        config_manager = ConfigManager()
-
-        # 初始化AI服务
-        self.ai_services = {
-            "OpenAI": OpenAIService(config_manager=config_manager),
-            "Grok": GrokService(config_manager=config_manager)
-        }
-        self.current_service = "OpenAI"  # 默认使用OpenAI
-        
+        self.init_ai_services()
         self.init_ui()
         self.load_models()
+        self.init_message_styles()
+        self.message_cache = MessageCache()
+        self.setup_shortcuts()
+
+    def init_config(self):
+        self.config_manager = ConfigManager()
+        self.global_config = self.config_manager.get_config()
+        self.log_level = self.global_config.get('logging.level', 'INFO')
+        self.logger = Logger.create_logger('chat')
+
+    def init_ai_services(self):
+        self.ai_services = {
+            "OpenAI": OpenAIService(config_manager=self.config_manager),
+            "Grok": GrokService(config_manager=self.config_manager)
+        }
+        self.current_service = "OpenAI"
 
     def init_ui(self):
         """初始化UI布局"""
         self.setWindowTitle('AI对话')
         layout = QVBoxLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         # 服务选择区域
         service_layout = QHBoxLayout()
         service_label = QLabel("AI服务:")
+        service_label.setFont(QFont("Microsoft YaHei", 10))
         self.service_combo = QComboBox()
+        self.service_combo.setFont(QFont("Microsoft YaHei", 10))
+        self.service_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #dcdcdc;
+                border-radius: 4px;
+                padding: 5px;
+                min-width: 100px;
+            }
+            QComboBox:hover {
+                border: 1px solid #1890ff;
+            }
+        """)
         self.service_combo.addItems(self.ai_services.keys())
         self.service_combo.currentTextChanged.connect(self.on_service_changed)
         service_layout.addWidget(service_label)
         service_layout.addWidget(self.service_combo)
+        service_layout.addStretch()
         layout.addLayout(service_layout)
 
         # 提供商选择区域
-        ai_service = self.ai_services[self.current_service]
-        providers = ai_service.get_providers()
         provider_layout = QHBoxLayout()
         provider_label = QLabel("提供商:")
+        provider_label.setFont(QFont("Microsoft YaHei", 10))
         self.provider_combo = QComboBox()
+        self.provider_combo.setFont(QFont("Microsoft YaHei", 10))
+        self.provider_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #dcdcdc;
+                border-radius: 4px;
+                padding: 5px;
+                min-width: 100px;
+            }
+            QComboBox:hover {
+                border: 1px solid #1890ff;
+            }
+        """)
+        ai_service = self.ai_services[self.current_service]
+        providers = ai_service.get_providers()
         self.provider_combo.addItems(providers)
         self.provider_combo.currentTextChanged.connect(self.on_provider_changed)
         provider_layout.addWidget(provider_label)
         provider_layout.addWidget(self.provider_combo)
+        provider_layout.addStretch()
         layout.addLayout(provider_layout)
 
         # 模型选择区域
         model_layout = QHBoxLayout()
         model_label = QLabel("AI模型:")
+        model_label.setFont(QFont("Microsoft YaHei", 10))
         self.model_combo = QComboBox()
+        self.model_combo.setFont(QFont("Microsoft YaHei", 10))
+        self.model_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #dcdcdc;
+                border-radius: 4px;
+                padding: 5px;
+                min-width: 100px;
+            }
+            QComboBox:hover {
+                border: 1px solid #1890ff;
+            }
+        """)
         model_layout.addWidget(model_label)
         model_layout.addWidget(self.model_combo)
         model_layout.addStretch()
         
         # 添加关于按钮
         about_button = QPushButton("关于")
+        about_button.setFont(QFont("Microsoft YaHei", 10))
+        about_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 15px;
+                color: #333333;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
         about_button.clicked.connect(self.show_about_dialog)
         model_layout.addWidget(about_button)
         
@@ -130,39 +149,99 @@ class ChatForm(QWidget):
         # 对话历史显示区域
         self.history_display = QTextEdit()
         self.history_display.setReadOnly(True)
+        self.history_display.setFont(QFont("Microsoft YaHei", 10))
+        self.history_display.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #dcdcdc;
+                border-radius: 8px;
+                padding: 10px;
+                background-color: white;
+            }
+        """)
         layout.addWidget(self.history_display)
 
         # 输入区域
         input_layout = QVBoxLayout()
         
         # 文件预览区域
-        preview_scroll = QScrollArea()
-        preview_scroll.setWidgetResizable(True)
-        preview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        preview_scroll.setFixedHeight(200)
+        self.preview_scroll = QScrollArea()
+        self.preview_scroll.setWidgetResizable(True)
+        self.preview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.preview_scroll.setFixedHeight(200)
+        self.preview_scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+        self.preview_scroll.setVisible(False)  # 初始时隐藏预览区域
         
         self.preview_container = QWidget()
         self.preview_layout = QHBoxLayout(self.preview_container)
         self.preview_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        preview_scroll.setWidget(self.preview_container)
+        self.preview_layout.setContentsMargins(0, 0, 0, 0)
+        self.preview_scroll.setWidget(self.preview_container)
         
-        input_layout.addWidget(preview_scroll)
+        input_layout.addWidget(self.preview_scroll)
         
         # 消息输入区域
         message_layout = QHBoxLayout()
         self.message_input = QLineEdit()
         self.message_input.setPlaceholderText("输入消息...")
+        self.message_input.setFont(QFont("Microsoft YaHei", 10))
+        self.message_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #dcdcdc;
+                border-radius: 20px;
+                padding: 10px 15px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 1px solid #1890ff;
+            }
+        """)
         self.message_input.returnPressed.connect(self.send_message)
         
         # 文件上传按钮
         self.upload_button = QPushButton()
-        self.upload_button.setIcon(QIcon("icons/upload.png"))  # 需要添加图标文件
-        self.upload_button.setIconSize(QSize(24, 24))
+        self.upload_button.setIcon(QIcon("icons/upload.png"))
+        self.upload_button.setIconSize(QSize(20, 20))
         self.upload_button.setFixedSize(40, 40)
+        self.upload_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1890ff;
+                border: none;
+                border-radius: 20px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #40a9ff;
+            }
+            QPushButton:pressed {
+                background-color: #096dd9;
+            }
+        """)
         self.upload_button.clicked.connect(self.upload_file)
         
         # 发送按钮
         self.send_button = QPushButton("发送")
+        self.send_button.setFont(QFont("Microsoft YaHei", 10))
+        self.send_button.setFixedSize(80, 40)
+        self.send_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1890ff;
+                color: white;
+                border: none;
+                border-radius: 20px;
+                padding: 5px 15px;
+            }
+            QPushButton:hover {
+                background-color: #40a9ff;
+            }
+            QPushButton:disabled {
+                background-color: #bae7ff;
+            }
+        """)
         self.send_button.clicked.connect(self.send_message)
         
         message_layout.addWidget(self.message_input)
@@ -174,6 +253,14 @@ class ChatForm(QWidget):
 
         # 状态栏
         self.status_bar = QStatusBar()
+        self.status_bar.setFont(QFont("Microsoft YaHei", 9))
+        self.status_bar.setStyleSheet("""
+            QStatusBar {
+                border-top: 1px solid #dcdcdc;
+                padding: 5px;
+                color: #666666;
+            }
+        """)
         self.status_bar.showMessage("就绪")
         layout.addWidget(self.status_bar)
 
@@ -212,6 +299,14 @@ class ChatForm(QWidget):
             self.logger.error(f"切换模型失败: {str(e)}")
             self.status_bar.showMessage(f"切换模型失败: {str(e)}")
 
+    def is_valid_file_type(self, file_path: str) -> bool:
+        valid_extensions = {
+            'image': ['.png', '.jpg', '.jpeg', '.gif', '.bmp'],
+            'text': ['.txt', '.md', '.py', '.js', '.html']
+        }
+        ext = os.path.splitext(file_path)[1].lower()
+        return any(ext in exts for exts in valid_extensions.values())
+
     def upload_file(self):
         """处理文件上传"""
         file_dialog = QFileDialog()
@@ -219,77 +314,117 @@ class ChatForm(QWidget):
             self,
             "选择文件",
             "",
-            "图片文件 (*.png *.jpg *.jpeg *.gif *.bmp);;所有文件 (*.*)"
+            "图片文件 (*.png *.jpg *.jpeg *.gif *.bmp);;文本文件 (*.txt *.md *.py *.js *.html);;所有文件 (*.*)"
         )
         
         if file_path:
+            if not self.is_valid_file_type(file_path):
+                QMessageBox.warning(self, "警告", "不支持的文件类型")
+                return
+            
+            # 如果是第一个文件，显示预览区域
+            if not self.attached_files:
+                self.preview_scroll.setVisible(True)
+            
             self.attached_files.append(file_path)
             preview = FilePreviewWidget(file_path)
             self.preview_layout.addWidget(preview)
             self.logger.info(f"文件已上传: {file_path}")
 
+    def handle_errors(func):
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except Exception as e:
+                self.logger.error(f"{func.__name__} 执行失败: {str(e)}")
+                self.status_bar.showMessage(f"错误: {str(e)}")
+                return None
+        return wrapper
+
+    @handle_errors
     def send_message(self):
         """发送消息并获取AI回复"""
-        message_text = self.message_input.text().strip()
-        if not message_text and not self.attached_files:
+        if not self.message_input.text().strip() and not self.attached_files:
             return
-
-        # 创建用户消息
-        user_message = Message(role="user", content=message_text)
         
-        # 处理附件
-        if self.attached_files:
-            attachments = []
-            for file_path in self.attached_files:
-                try:
-                    if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-                        # 处理图片文件
-                        with Image.open(file_path) as img:
-                            # 调整图片大小
-                            max_size = (800, 800)
-                            img.thumbnail(max_size)
-                            # 转换为base64
-                            buffered = io.BytesIO()
-                            img.save(buffered, format="PNG")
-                            img_str = base64.b64encode(buffered.getvalue()).decode()
-                            attachments.append({
-                                "type": "image",
-                                "data": img_str,
-                                "name": os.path.basename(file_path)
-                            })
-                    else:
-                        # 处理文本文件
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            attachments.append({
-                                "type": "text",
-                                "data": content,
-                                "name": os.path.basename(file_path)
-                            })
-                except Exception as e:
-                    self.logger.error(f"处理文件失败: {str(e)}")
-                    continue
-            
-            if attachments:
-                user_message.attachments = attachments
-
-        self.chat_history.add_message(user_message)
-        self.update_display()
-
-        # 清空输入框和附件
-        self.message_input.clear()
-        self.clear_attachments()
-
+        self.set_loading_state(True)
         try:
+            # 创建用户消息
+            message_text = self.message_input.text().strip()
+            if not message_text and self.attached_files:
+                message_text = "请描述这张图片"  # 如果只有图片没有文字，添加默认提示文本
+            
+            user_message = Message(role="user", content=message_text)
+            
+            # 处理附件
+            if self.attached_files:
+                attachments = []
+                for file_path in self.attached_files:
+                    try:
+                        if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                            # 处理图片文件
+                            with Image.open(file_path) as img:
+                                # 转换为RGB模式（如果是RGBA，移除alpha通道）
+                                if img.mode in ('RGBA', 'LA'):
+                                    background = Image.new('RGB', img.size, (255, 255, 255))
+                                    background.paste(img, mask=img.split()[-1])
+                                    img = background
+                                elif img.mode != 'RGB':
+                                    img = img.convert('RGB')
+                                
+                                # 调整图片大小，确保不超过API限制
+                                max_size = (2000, 2000)  # OpenAI API 建议的最大尺寸
+                                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                                
+                                # 转换为base64
+                                buffered = io.BytesIO()
+                                img.save(buffered, format="JPEG", quality=95)  # 使用JPEG格式，设置较高的质量
+                                img_str = base64.b64encode(buffered.getvalue()).decode()
+                                
+                                # 添加正确的mime type前缀
+                                img_base64 = f"data:image/jpeg;base64,{img_str}"
+                                
+                                attachments.append({
+                                    "type": "image",
+                                    "data": img_base64,
+                                    "name": os.path.basename(file_path)
+                                })
+                                
+                                self.logger.info(f"成功处理图片: {file_path}")
+                        else:
+                            # 处理文本文件
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                                attachments.append({
+                                    "type": "text",
+                                    "data": content,
+                                    "name": os.path.basename(file_path)
+                                })
+                    except Exception as e:
+                        self.logger.error(f"处理文件失败 {file_path}: {str(e)}")
+                        continue
+                
+                if attachments:
+                    user_message.attachments = attachments
+                    self.logger.info(f"添加了 {len(attachments)} 个附件到消息中")
+
+            self.chat_history.add_message(user_message)
+            self.update_display()
+
+            # 清空输入框和附件
+            self.message_input.clear()
+            self.clear_attachments()
+
             # 获取AI回复
-            self.status_bar.showMessage("正在获取回复...")
+            self.logger.info("正在发送消息到AI服务...")
             response = self.ai_services[self.current_service].send_message(self.chat_history.get_messages())
+            self.logger.info("收到AI服务响应")
             
             # 将响应转换为Message对象
             if isinstance(response, dict):
                 ai_message = Message(
                     role="assistant",
-                    content=response["choices"][0]["message"]["content"]
+                    content=response.get("choices", [{}])[0].get("message", {}).get("content", "抱歉，处理失败")
                 )
             else:
                 # 如果response已经是Message对象，直接使用
@@ -301,6 +436,8 @@ class ChatForm(QWidget):
         except Exception as e:
             self.logger.error(f"发送消息失败: {str(e)}")
             self.status_bar.showMessage(f"错误: {str(e)}")
+        finally:
+            self.set_loading_state(False)
 
     def clear_attachments(self):
         """清除所有附件"""
@@ -310,19 +447,21 @@ class ChatForm(QWidget):
             item = self.preview_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+        # 隐藏预览区域
+        self.preview_scroll.setVisible(False)
 
     def update_display(self):
         """更新对话显示"""
         self.history_display.clear()
         for message in self.chat_history.get_messages():
+            style = self.user_style if message.role == "user" else self.ai_style
             role_prefix = "用户: " if message.role == "user" else "AI: "
-            content = f"{role_prefix}{message.content}\n"
+            content = f'<div style="{style}">{role_prefix}{message.content}</div>'
             
-            # 显示附件信息
             if hasattr(message, 'attachments') and message.attachments:
-                content += "附件:\n"
+                content += '<div style="margin-top: 5px;">附件:</div>'
                 for attachment in message.attachments:
-                    content += f"- {attachment['name']}\n"
+                    content += f'<div style="margin-left: 10px;">- {attachment["name"]}</div>'
             
             self.history_display.append(content)
             
@@ -376,3 +515,47 @@ class ChatForm(QWidget):
         except Exception as e:
             self.logger.error(f"切换提供商失败: {str(e)}")
             self.status_bar.showMessage(f"切换提供商失败: {str(e)}")
+
+    def init_message_styles(self):
+        self.user_style = "background-color: #e3f2fd; padding: 5px; border-radius: 5px;"
+        self.ai_style = "background-color: #f5f5f5; padding: 5px; border-radius: 5px;"
+
+    def set_loading_state(self, is_loading: bool):
+        self.send_button.setEnabled(not is_loading)
+        self.send_button.setText("发送中..." if is_loading else "发送")
+        self.status_bar.showMessage("正在处理..." if is_loading else "就绪")
+
+    def setup_shortcuts(self):
+        send_shortcut = QShortcut(QKeySequence("Return"), self)
+        send_shortcut.activated.connect(self.send_message)
+        
+        clear_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
+        clear_shortcut.activated.connect(self.clear_attachments)
+
+
+class MessageCache:
+    def __init__(self, max_size=100):
+        self.messages = []
+        self.max_size = max_size
+        
+    def add(self, message):
+        self.messages.append(message)
+        if len(self.messages) > self.max_size:
+            self.messages.pop(0)
+            
+    def get_all(self):
+        return self.messages
+
+# 1. 添加文件大小限制
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+# 2. 优化文件处理
+def process_file(self, file_path: str) -> dict:
+    file_size = os.path.getsize(file_path)
+    if file_size > self.MAX_FILE_SIZE:
+        raise ValueError(f"文件大小超过限制: {file_size / 1024 / 1024:.2f}MB")
+        
+    if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+        return self.process_image_file(file_path)
+    else:
+        return self.process_text_file(file_path)
