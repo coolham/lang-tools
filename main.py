@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QApplication
 import sys
 from utils.version import version_info
 from utils.config_manager import ConfigManager
+import os
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -21,6 +22,32 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 def main():
     # 使用ConfigManager加载全局配置
     config_manager = ConfigManager()
+    
+    # 检查local.json是否存在
+    config_dir = os.path.join(os.path.dirname(__file__), 'config')
+    local_config_path = os.path.join(config_dir, 'local.json')
+    if not os.path.exists(local_config_path):
+        print("=" * 50)
+        print("错误: 缺少必要的配置文件!")
+        print(f"请在以下位置创建并配置 local.json 文件:")
+        print(f"{local_config_path}")
+        print("\n配置文件示例:")
+        print("""
+{
+    "ai_services": {
+        "openai": {
+            "api_key": "your-api-key-here"
+        }
+    },
+    "logging": {
+        "level": "INFO",
+        "fixed_filename": false
+    }
+}
+        """)
+        print("=" * 50)
+        sys.exit(1)
+
     global_config = config_manager.get_config()
     log_level = global_config.get('logging.level', 'INFO')
     fixed_filename = global_config.get('logging.fixed_filename', False)

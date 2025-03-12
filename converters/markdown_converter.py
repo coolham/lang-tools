@@ -1,4 +1,4 @@
-from markitdown import MarkItDown
+# from markitdown import MarkItDown
 # from openai import OpenAI
 from utils.logger import Logger
 from utils.config_manager import ConfigManager
